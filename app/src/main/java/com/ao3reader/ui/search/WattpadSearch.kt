@@ -44,6 +44,8 @@ import com.ao3reader.AppContainer
 import com.ao3reader.data.local.BlockKind
 import com.ao3reader.data.model.Site
 import com.ao3reader.data.model.WattpadFilter
+import com.ao3reader.data.model.WattpadLength
+import com.ao3reader.data.model.WattpadSort
 import com.ao3reader.data.prefs.AppSettings
 import com.ao3reader.data.repo.BlockLists
 import com.ao3reader.ui.Navigator
@@ -59,6 +61,8 @@ import kotlinx.coroutines.launch
 
 /** Wattpad tags are single lowercase words ("enemiestolovers"). */
 fun wattpadTag(text: String): String = text.trim().removePrefix("#").lowercase().replace(Regex("""\s+"""), "")
+
+private val UPDATED_CHOICES = listOf("Any time" to null, "Past week" to 7, "Past month" to 30, "Past year" to 365)
 
 class WattpadSearchViewModel(private val c: AppContainer) : ViewModel() {
     var filter by mutableStateOf(WattpadFilter())
@@ -165,6 +169,32 @@ fun WattpadSearch(nav: Navigator, settings: AppSettings, modifier: Modifier) {
                             }
                         }
                     }
+                    // Sorting is always visible and re-runs a search that's already showing.
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        WattpadSort.entries.forEach { s ->
+                            FilterChip(
+                                selected = f.sort == s,
+                                onClick = {
+                                    vm.filter = vm.filter.copy(sort = s)
+                                    if (vm.list.started && !vm.filter.isEmpty) runSearch()
+                                },
+                                label = { Text(s.label) },
+                            )
+                        }
+                    }
+                    if (f.sort == WattpadSort.HOT) {
+                        Text(
+                            "Hot shows Wattpad's trending list for the first tag (or your search words as a tag).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else if (f.sort != WattpadSort.BEST_MATCH) {
+                        Text(
+                            "Wattpad can't sort its search itself, so each page sorts the next 100 best matches.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.weight(1f))
                         TextButton(onClick = { advanced = !advanced }) {
@@ -187,6 +217,26 @@ fun WattpadSearch(nav: Navigator, settings: AppSettings, modifier: Modifier) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Completed stories only", Modifier.weight(1f))
                                 Switch(checked = f.completeOnly, onCheckedChange = { vm.filter = vm.filter.copy(completeOnly = it) })
+                            }
+                            Text("Updated", style = MaterialTheme.typography.labelLarge)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                UPDATED_CHOICES.forEach { (label, days) ->
+                                    FilterChip(
+                                        selected = f.updatedWithinDays == days,
+                                        onClick = { vm.filter = vm.filter.copy(updatedWithinDays = days) },
+                                        label = { Text(label) },
+                                    )
+                                }
+                            }
+                            Text("Length", style = MaterialTheme.typography.labelLarge)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                WattpadLength.entries.forEach { l ->
+                                    FilterChip(
+                                        selected = f.length == l,
+                                        onClick = { vm.filter = vm.filter.copy(length = l) },
+                                        label = { Text(l.label) },
+                                    )
+                                }
                             }
                         }
                     }

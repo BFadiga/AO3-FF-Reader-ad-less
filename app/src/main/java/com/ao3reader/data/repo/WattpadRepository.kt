@@ -2,6 +2,7 @@ package com.ao3reader.data.repo
 
 import com.ao3reader.data.model.ReviewPage
 import com.ao3reader.data.model.WattpadFilter
+import com.ao3reader.data.model.WattpadSort
 import com.ao3reader.data.model.WorkDetail
 import com.ao3reader.data.model.WorkIds
 import com.ao3reader.data.model.WorkPage
@@ -20,19 +21,64 @@ class WattpadRepository(private val client: WattpadClient) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Long, WorkDetail>?) = size > 6
     }
 
-    /** Searches by text and tags, then applies what Wattpad can't filter. Skips ahead when a page is all filtered out. */
+    /**
+     * Searches by text and tags, then applies what Wattpad can't filter. Wattpad only ranks search
+     * results by relevance, so "most votes/reads" sorts a pool of the top [POOL] matches per page.
+     */
     suspend fun search(filter: WattpadFilter, page: Int): WorkPage {
         if (filter.isEmpty) throw WattpadException("Type something or add a tag to search for.")
+        if (filter.sort == WattpadSort.HOT) return hot(filter, page)
         val query = (listOf(filter.query.trim()) + filter.includeTags.map { "#" + it.replace(" ", "") })
             .filter { it.isNotBlank() }.joinToString(" ")
+        val pooled = filter.sort != WattpadSort.BEST_MATCH
+        val size = if (pooled) POOL else WattpadUrls.PAGE_SIZE
+        val step = if (pooled) 50 else WattpadUrls.PAGE_SIZE
         var p = page
         while (true) {
-            val json = client.get(WattpadUrls.search(query, (p - 1) * WattpadUrls.PAGE_SIZE, filter.mature))
-            val result = parse { WattpadParser.parseStoryList(json, p, WattpadUrls.PAGE_SIZE) }
-            val kept = result.works.filter { matches(it, filter) }
-            if (kept.isNotEmpty() || p >= result.totalPages || p - page >= 3) return result.copy(works = kept, page = p)
+            val works = mutableListOf<WorkSummary>()
+            var total = 0
+            var offset = (p - 1) * size
+            while (offset < p * size) {
+                val json = client.get(WattpadUrls.search(query, offset, filter.mature, step, filter.completeOnly, filter.updatedWithinDays))
+                val result = parse { WattpadParser.parseStoryList(json, p, size) }
+                works += result.works
+                total = parse { org.json.JSONObject(json).optInt("total", works.size) }
+                offset += step
+                if (result.works.isEmpty() || offset >= total) break
+            }
+            val totalPages = ((total + size - 1) / size).coerceAtLeast(1)
+            val kept = sorted(works.distinctBy { it.id }.filter { matches(it, filter) }, filter.sort)
+            if (kept.isNotEmpty() || p >= totalPages || p - page >= 3) {
+                val heading = when {
+                    total == 0 -> null
+                    pooled -> "$total stories · top ${(p - 1) * size + 1}–${(p * size).coerceAtMost(total)} matches by ${filter.sort.label.lowercase().removePrefix("most ")}"
+                    else -> "$total stories"
+                }
+                return WorkPage(kept, p, totalPages, heading = heading)
+            }
             p++
         }
+    }
+
+    /** The trending list for the first tag (or the search words as a tag). */
+    private suspend fun hot(filter: WattpadFilter, page: Int): WorkPage {
+        val tag = filter.includeTags.firstOrNull() ?: filter.query.trim().lowercase().replace(Regex("""\s+"""), "")
+        var p = page
+        while (true) {
+            val json = client.get(WattpadUrls.hot(tag, (p - 1) * WattpadUrls.PAGE_SIZE))
+            val result = parse { WattpadParser.parseStoryList(json, p, WattpadUrls.PAGE_SIZE) }
+            val kept = result.works.filter { matches(it, filter) && filter.includeTags.drop(1).all { t -> t in it.freeforms.map(String::lowercase) } }
+            if (kept.isNotEmpty() || p >= result.totalPages || p - page >= 3 || result.works.isEmpty()) {
+                return result.copy(works = kept, page = p, heading = "Hot in #$tag")
+            }
+            p++
+        }
+    }
+
+    private fun sorted(works: List<WorkSummary>, sort: WattpadSort) = when (sort) {
+        WattpadSort.MOST_VOTES -> works.sortedByDescending { it.kudos }
+        WattpadSort.MOST_READS -> works.sortedByDescending { it.hits }
+        else -> works
     }
 
     private fun matches(w: WorkSummary, f: WattpadFilter): Boolean {
@@ -40,8 +86,14 @@ class WattpadRepository(private val client: WattpadClient) {
         if (f.excludeTags.any { it.lowercase().replace(" ", "") in tags }) return false
         if (f.completeOnly && !w.complete) return false
         if (!f.mature && w.rating.isNotBlank()) return false
+        if (w.chaptersPosted !in f.length.parts) return false
+        if (f.updatedWithinDays != null && f.sort == WattpadSort.HOT && !updatedWithin(w.updated, f.updatedWithinDays)) return false
         return true
     }
+
+    private fun updatedWithin(date: String, days: Int): Boolean = runCatching {
+        !java.time.LocalDate.parse(date).isBefore(java.time.LocalDate.now().minusDays(days.toLong()))
+    }.getOrDefault(true)
 
     /** Story details and its parts; part texts load with [chapterText]. */
     suspend fun fullWork(id: Long, forceRefresh: Boolean = false): WorkDetail {
@@ -111,6 +163,10 @@ class WattpadRepository(private val client: WattpadClient) {
             page++
         } while (page <= result.totalPages && page <= 30 && result.works.isNotEmpty())
         return all.distinctBy { it.id }
+    }
+
+    private companion object {
+        const val POOL = 100
     }
 
     private suspend fun <T> parse(block: () -> T): T = withContext(Dispatchers.Default) { block() }

@@ -93,6 +93,26 @@ data class WattpadFilter(
     val excludeTags: List<String> = emptyList(),
     val mature: Boolean = true,
     val completeOnly: Boolean = false,
+    val sort: WattpadSort = WattpadSort.BEST_MATCH,
+    /** Only stories updated in the last N days; null for any time. */
+    val updatedWithinDays: Int? = null,
+    val length: WattpadLength = WattpadLength.ANY,
 ) {
     val isEmpty: Boolean get() = query.isBlank() && includeTags.isEmpty()
+}
+
+enum class WattpadSort(val label: String) {
+    BEST_MATCH("Best match"),
+    MOST_VOTES("Most votes"),
+    MOST_READS("Most reads"),
+    /** Wattpad's own trending list for a tag. */
+    HOT("Hot"),
+}
+
+/** Wattpad doesn't give word counts in search, so length goes by number of parts. */
+enum class WattpadLength(val label: String, val parts: IntRange) {
+    ANY("Any length", 0..Int.MAX_VALUE),
+    SHORT("Under 10 parts", 0..9),
+    MEDIUM("10–30 parts", 10..30),
+    LONG("Over 30 parts", 31..Int.MAX_VALUE),
 }

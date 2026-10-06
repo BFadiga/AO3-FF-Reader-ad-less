@@ -14,8 +14,22 @@ object WattpadUrls {
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")
 
-    fun search(query: String, offset: Int, mature: Boolean): String =
-        "$BASE/v4/search/stories?query=${enc(query)}&mature=$mature&limit=$PAGE_SIZE&offset=$offset" +
+    fun search(
+        query: String,
+        offset: Int,
+        mature: Boolean,
+        limit: Int = PAGE_SIZE,
+        completeOnly: Boolean = false,
+        updatedWithinDays: Int? = null,
+    ): String =
+        "$BASE/v4/search/stories?query=${enc(query)}&mature=$mature&limit=$limit&offset=$offset" +
+            (if (completeOnly) "&filter=complete" else "") +
+            (updatedWithinDays?.let { "&updateYoungerThan=$it" } ?: "") +
+            "&fields=${enc("stories($STORY_FIELDS),total")}"
+
+    /** Wattpad's trending ("hot") list for one tag. */
+    fun hot(tag: String, offset: Int, limit: Int = PAGE_SIZE): String =
+        "$BASE/v5/hotlist?tags=${enc(tag)}&limit=$limit&offset=$offset" +
             "&fields=${enc("stories($STORY_FIELDS),total")}"
 
     fun story(id: Long): String =

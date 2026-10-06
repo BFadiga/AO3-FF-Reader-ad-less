@@ -24,6 +24,13 @@ class Ao3Client(
     private val minIntervalMs: Long = 1_000,
     /** The app passes a jar shared with its WebViews so signing in on the login page signs in here too. */
     private val cookies: CookieJar = MemoryCookieJar(),
+    /** The identity sent with every request; the app uses the same one as its WebViews so Cloudflare clearance carries over. */
+    private val userAgent: () -> String = { USER_AGENT },
+    /**
+     * Loads a page in a real browser engine. Used when AO3's Cloudflare edge turns the plain client
+     * away (403 or a "Just a moment" check); throws if a check has to be done by hand.
+     */
+    private val browserFallback: (suspend (String) -> String)? = null,
 ) {
 
     private val cookieJar = object : CookieJar {
@@ -63,7 +70,7 @@ class Ao3Client(
                     Request.Builder()
                         .url(url)
                         .post(body)
-                        .header("User-Agent", USER_AGENT)
+                        .header("User-Agent", userAgent())
                         .header("Referer", referer)
                         .header("Accept", "text/html,application/json")
                         .header("X-Requested-With", "XMLHttpRequest")
@@ -88,7 +95,7 @@ class Ao3Client(
                     http.newCall(
                         Request.Builder()
                             .url(url)
-                            .header("User-Agent", USER_AGENT)
+                            .header("User-Agent", userAgent())
                             .header("Accept", "text/html,application/json")
                             .build(),
                     ).execute()
@@ -96,24 +103,35 @@ class Ao3Client(
                     lastRequestAt = System.currentTimeMillis()
                 }
             }
-            response.use { r ->
+            val blocked = response.use { r ->
                 when {
-                    r.isSuccessful -> return@withContext r.body?.string().orEmpty()
+                    r.code == 403 || r.header("cf-mitigated") == "challenge" -> true
+                    r.isSuccessful -> {
+                        val body = r.body?.string().orEmpty()
+                        if (looksLikeChallenge(body)) true else return@withContext body
+                    }
                     r.code == 429 && attempt < 3 -> {
                         val retryAfter = r.header("Retry-After")?.toLongOrNull()?.coerceIn(1, 120) ?: (10L shl attempt)
                         attempt++
                         delay(retryAfter * 1_000)
+                        false
                     }
                     r.code == 429 -> throw Ao3Exception("AO3 is rate-limiting requests. Try again in a few minutes.")
                     // AO3's Cloudflare edge intermittently answers 520-529 (often 525); a retry usually works.
                     r.code in 520..529 && attempt < 3 -> {
                         attempt++
                         delay(2_000L * attempt)
+                        false
                     }
                     r.code == 404 -> throw Ao3Exception("That page doesn't exist on AO3 (it may have been deleted).")
                     r.code in 500..599 -> throw Ao3Exception("AO3 is having trouble right now (error ${r.code}).")
                     else -> throw IOException("AO3 answered ${r.code}")
                 }
+            }
+            if (blocked) {
+                val fallback = browserFallback
+                    ?: throw Ao3Exception("AO3 turned the app away (its bot check). Try again in a little while.")
+                return@withContext fallback(url)
             }
         }
         @Suppress("UNREACHABLE_CODE")
@@ -130,6 +148,13 @@ class Ao3Client(
     }
 
     companion object {
+        /** Cloudflare's interstitial rather than an AO3 page. */
+        fun looksLikeChallenge(html: String): Boolean {
+            val head = html.take(6_000)
+            return head.contains("<title>Just a moment", true) || head.contains("<title>Attention Required", true) ||
+                head.contains("cf-browser-verification")
+        }
+
         const val USER_AGENT = "AO3Reader-Android/0.1 (personal, non-commercial reader app)"
     }
 }

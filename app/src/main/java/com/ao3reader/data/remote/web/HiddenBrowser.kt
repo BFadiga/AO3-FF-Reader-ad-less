@@ -28,7 +28,11 @@ internal fun desktopUserAgent(webView: String): String {
     return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$chrome Safari/537.36"
 }
 
-private fun siteOf(url: String) = if (url.contains("wattpad.com")) "Wattpad" else "FanFiction.net"
+private fun siteOf(url: String) = when {
+    url.contains("wattpad.com") -> "Wattpad"
+    url.contains("archiveofourown.org") -> "AO3"
+    else -> "FanFiction.net"
+}
 
 /**
  * Loads pages in an off-screen WebView. Used for FanFiction.net, which sits behind Cloudflare's
