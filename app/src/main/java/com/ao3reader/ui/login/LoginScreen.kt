@@ -43,6 +43,9 @@ fun LoginScreen(site: Site, nav: Navigator) {
     val snackbar = remember { SnackbarHostState() }
     var loading by remember { mutableStateOf(true) }
     var checking by remember { mutableStateOf(false) }
+    // Only treat leaving a sign-in page as success once a sign-in page was actually shown.
+    var sawLoginPage by remember { mutableStateOf(false) }
+    var openedLoginLink by remember { mutableStateOf(false) }
     val loginUrl = if (site == Site.AO3) Ao3Urls.LOGIN else FfnUrls.LOGIN
 
     fun confirm() {
@@ -69,8 +72,8 @@ fun LoginScreen(site: Site, nav: Navigator) {
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (loading || checking) LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(
-                "You're on ${site.label}'s own sign-in page. Your password goes straight to the site; " +
-                    "the app only keeps you signed in.",
+                (if (site == Site.FFN) "This is FanFiction.net itself. If its sign-in box doesn't open, tap Login on the page. " else "You're on ${site.label}'s own sign-in page. ") +
+                    "Your password goes straight to the site; the app only keeps you signed in. Tap Done when you're in.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -90,8 +93,15 @@ fun LoginScreen(site: Site, nav: Navigator) {
                                     loading = false
                                     CookieManager.getInstance().flush()
                                     // Sites leave the login page once the sign-in worked.
-                                    val stillLoggingIn = url == null || url.contains("login", true) || url.contains("session", true)
-                                    if (!stillLoggingIn) confirm()
+                                    val onLoginPage = url == null || url.contains("login", true) || url.contains("session", true)
+                                    if (onLoginPage) {
+                                        sawLoginPage = true
+                                    } else if (sawLoginPage) {
+                                        confirm()
+                                    } else if (site == Site.FFN && !openedLoginLink) {
+                                        // The first load may be the "are you human" check, so try again on each page until it works.
+                                        view.evaluateJavascript(OPEN_LOGIN_JS) { clicked -> if (clicked == "true") openedLoginLink = true }
+                                    }
                                 }
                             }
                             loadUrl(loginUrl)
@@ -102,3 +112,15 @@ fun LoginScreen(site: Site, nav: Navigator) {
         }
     }
 }
+
+/** Clicks the page's own Login / Sign in link, wherever the site currently points it. */
+private const val OPEN_LOGIN_JS = """
+(function() {
+  var links = document.querySelectorAll('a, button');
+  for (var i = 0; i < links.length; i++) {
+    var t = (links[i].textContent || '').replace(/\s+/g, ' ').trim();
+    if (/^(log ?in|sign ?in)$/i.test(t)) { links[i].click(); return true; }
+  }
+  return false;
+})();
+"""

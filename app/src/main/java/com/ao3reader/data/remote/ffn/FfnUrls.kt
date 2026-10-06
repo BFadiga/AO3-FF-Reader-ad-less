@@ -6,7 +6,8 @@ import java.net.URLEncoder
 
 object FfnUrls {
     const val BASE = "https://www.fanfiction.net"
-    const val LOGIN = "$BASE/login.php"
+    /** The site has no fixed sign-in address that works everywhere, so sign-in starts on the home page. */
+    const val LOGIN = "$BASE/"
     const val FOLLOWS = "$BASE/alert/story.php"
     const val FAVORITES = "$BASE/favorites/story.php"
 
