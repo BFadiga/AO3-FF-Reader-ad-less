@@ -19,7 +19,7 @@ jobs:
           LIVE_WATTPAD: "1"
           LIVE_AO3: "1"
           LIVE_FFN: "1"
-        run: ./gradlew --no-daemon testDebugUnitTest --tests '*LiveTest*' -i | grep -E "FFNPROBE|comment json|GET |search:|story:|part 1|comments on|author |library|current user|PASSED|FAILED|SKIPPED|AssertionError|Exception" || true
+        run: ./gradlew --no-daemon testDebugUnitTest --tests '*LiveTest*' -i | grep -E "WPPROBE|FFNPROBE|comment json|GET |search:|story:|part 1|comments on|author |library|current user|PASSED|FAILED|SKIPPED|AssertionError|Exception" || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
