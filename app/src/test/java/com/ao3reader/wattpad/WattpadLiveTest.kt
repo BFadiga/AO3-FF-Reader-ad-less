@@ -47,17 +47,24 @@ class WattpadLiveTest {
         println("part 1 text: ${text.length} chars: ${text.take(200)}")
         assertTrue(text.length > 200)
 
-        val comments = WattpadParser.parseComments(get(WattpadUrls.comments(part.id!!)))
+        val rawComments = get(WattpadUrls.comments(part.id!!))
+        println("comment json: " + org.json.JSONObject(rawComments).optJSONArray("comments")?.optJSONObject(0)?.toString()?.take(900))
+        val comments = WattpadParser.parseComments(rawComments)
         println("comments on part 1: ${comments.size}; first: ${comments.firstOrNull()}")
 
         val author = first.authors.first()
-        val stories = WattpadParser.parseStoryList(get(WattpadUrls.authorStories(author, 0)), 1, 50)
-        println("author $author: ${stories.works.size} stories")
-        assertTrue(stories.works.isNotEmpty())
-
-        val library = runCatching { get(WattpadUrls.library(author, 0)) }
-        println("public library read for $author: ${library.isSuccess}")
-        val me = runCatching { get(WattpadUrls.CURRENT_USER) }
-        println("signed-out current user: ${me.getOrNull()?.take(120) ?: me.exceptionOrNull()?.message}")
+        val fields = "stories(id,title,user(name),numParts),total"
+        listOf(
+            WattpadUrls.authorStories(author, 0),
+            "https://www.wattpad.com/v4/users/$author/stories/published?offset=0&limit=50&fields=$fields",
+            "https://www.wattpad.com/v4/users/$author/stories?offset=0&limit=50&fields=$fields",
+            "https://www.wattpad.com/api/v3/users/$author/stories?offset=0&limit=50&fields=$fields",
+            "https://www.wattpad.com/api/v3/stories?filter=published&username=$author&fields=$fields",
+            WattpadUrls.library(author, 0),
+            "https://www.wattpad.com/api/v3/users/$author/library?fields=$fields",
+            "https://www.wattpad.com/api/v3/users/$author?fields=username,numStoriesPublished",
+            WattpadUrls.CURRENT_USER,
+            "https://www.wattpad.com/v4/users/me",
+        ).forEach { url -> runCatching { get(url) }.onFailure { println("FAILED: ${it.message?.take(200)}") } }
     }
 }
