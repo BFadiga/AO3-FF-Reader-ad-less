@@ -55,6 +55,10 @@ fun WebScreen(url: String, nav: Navigator) {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.userAgentString = container.browser.userAgent
+                        settings.useWideViewPort = true
+                        settings.loadWithOverviewMode = true
+                        settings.builtInZoomControls = true
+                        settings.displayZoomControls = false
                         CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
                         webViewClient = object : WebViewClient() {
                             override fun onPageFinished(view: WebView, loaded: String?) {

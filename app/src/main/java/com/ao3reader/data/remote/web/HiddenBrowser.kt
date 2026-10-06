@@ -22,6 +22,12 @@ import kotlin.coroutines.resumeWithException
 class VerificationNeededException(val url: String) :
     Exception("${siteOf(url)} wants to check that you're human. Tap Verify, complete the check, then come back.")
 
+/** Keeps the real Chrome version from the WebView's user agent but drops the phone/WebView markers. */
+internal fun desktopUserAgent(webView: String): String {
+    val chrome = Regex("""Chrome/([\d.]+)""").find(webView)?.groupValues?.get(1) ?: "129.0.0.0"
+    return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/$chrome Safari/537.36"
+}
+
 private fun siteOf(url: String) = if (url.contains("wattpad.com")) "Wattpad" else "FanFiction.net"
 
 /**
@@ -32,7 +38,12 @@ class HiddenBrowser(private val context: Context) {
     private val lock = Mutex()
     private val main = Handler(Looper.getMainLooper())
 
-    val userAgent: String by lazy { WebSettings.getDefaultUserAgent(context) }
+    /**
+     * The phone's own browser engine, presented as desktop Chrome. FanFiction.net sends phones to its
+     * mobile site, whose pages (including sign-in) the app can't use, so every request, the hidden
+     * WebView and the sign-in page all use this one identity (Cloudflare ties its clearance to it).
+     */
+    val userAgent: String by lazy { desktopUserAgent(WebSettings.getDefaultUserAgent(context)) }
 
     /** Returns the page's HTML once any Cloudflare check has cleared. */
     suspend fun load(url: String, timeoutMs: Long = 35_000): String = run(url, null, timeoutMs)

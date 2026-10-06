@@ -6,8 +6,8 @@ import java.net.URLEncoder
 
 object FfnUrls {
     const val BASE = "https://www.fanfiction.net"
-    /** The site has no fixed sign-in address that works everywhere, so sign-in starts on the home page. */
-    const val LOGIN = "$BASE/"
+    /** Only exists on the desktop site, which is why the app presents itself as desktop Chrome. */
+    const val LOGIN = "$BASE/login.php"
     const val FOLLOWS = "$BASE/alert/story.php"
     const val FAVORITES = "$BASE/favorites/story.php"
 
