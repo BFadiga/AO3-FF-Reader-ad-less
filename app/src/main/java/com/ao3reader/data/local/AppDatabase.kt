@@ -34,18 +34,33 @@ class Converters {
     }
 }
 
-@Database(entities = [LibraryWork::class, FavoriteTag::class, Blocked::class], version = 2, exportSchema = true)
+@Database(entities = [LibraryWork::class, FavoriteTag::class, Blocked::class, UpdateEvent::class], version = 3, exportSchema = true)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun library(): LibraryDao
     abstract fun favoriteTags(): FavoriteTagDao
     abstract fun blocked(): BlockedDao
+    abstract fun updates(): UpdateDao
 
     companion object {
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "ao3reader.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
+
+        /** Adds pinned favorites and the Updates tab's history. */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE library ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `updates` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `workId` INTEGER NOT NULL, " +
+                        "`title` TEXT NOT NULL, `authors` TEXT NOT NULL, `coverUrl` TEXT, `rating` TEXT NOT NULL, " +
+                        "`chaptersAdded` INTEGER NOT NULL, `firstNewChapter` INTEGER NOT NULL, `latestChapterTitle` TEXT NOT NULL, " +
+                        "`detectedAt` INTEGER NOT NULL, `seen` INTEGER NOT NULL)",
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_updates_workId` ON `updates` (`workId`)")
+            }
+        }
 
         /** Adds FanFiction.net: covers, likes, and a site for every favorite tag and block. */
         val MIGRATION_1_2 = object : Migration(1, 2) {

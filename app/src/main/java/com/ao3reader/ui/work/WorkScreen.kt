@@ -139,6 +139,11 @@ class WorkViewModel(private val c: AppContainer, val id: Long) : ViewModel() {
         }
     }
 
+    fun setPinned(work: WorkSummary, pinned: Boolean) = viewModelScope.launch {
+        c.library.setPinned(work, pinned)
+        message = if (pinned) "Pinned to the top of your library." else "Unpinned."
+    }
+
     fun toggleFollow() = viewModelScope.launch {
         val s = summary ?: return@launch
         val follow = entry.value?.followed != true
@@ -219,6 +224,13 @@ fun WorkScreen(id: Long, nav: Navigator) {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Default.MoreVert, contentDescription = "More") }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(text = { Text("Refresh from ${site.shortLabel}") }, onClick = { menu = false; vm.load(true) })
+                    vm.summary?.let { s ->
+                        val pinned = entry?.pinned == true
+                        DropdownMenuItem(
+                            text = { Text(if (pinned) "Unpin from library top" else "Pin to top of library") },
+                            onClick = { menu = false; vm.setPinned(s, !pinned) },
+                        )
+                    }
                     DropdownMenuItem(text = { Text("Share link") }, onClick = {
                         menu = false
                         val send = Intent(Intent.ACTION_SEND).apply {

@@ -1,5 +1,7 @@
 package com.ao3reader.ui
 
+import com.ao3reader.ui.updates.UpdatesScreen
+import androidx.compose.material.icons.filled.Notifications
 import com.ao3reader.data.model.WattpadFilter
 import com.ao3reader.ui.search.wattpadTag
 import com.ao3reader.update.AppUpdatePrompt
@@ -63,6 +65,7 @@ object Routes {
     const val CATEGORIES = "categories"
     const val SEARCH = "search"
     const val LIBRARY = "library"
+    const val UPDATES = "updates"
     const val SETTINGS = "settings"
     const val BLOCKED = "settings/blocked"
     const val READER_SETTINGS = "settings/reader"
@@ -84,6 +87,7 @@ private val topLevel = listOf(
     TopLevel(Routes.CATEGORIES, "Categories", Icons.Default.Category),
     TopLevel(Routes.SEARCH, "Search", Icons.Default.Search),
     TopLevel(Routes.LIBRARY, "Library", Icons.AutoMirrored.Filled.LibraryBooks),
+    TopLevel(Routes.UPDATES, "Updates", Icons.Default.Notifications),
     TopLevel(Routes.SETTINGS, "Settings", Icons.Default.Settings),
 )
 
@@ -158,6 +162,7 @@ fun AppNavigation(openWorkId: Long?, onOpenWorkHandled: () -> Unit) {
     val showBottomBar = route == null || topLevel.any { it.route == route }
     val library by container.library.observeLibrary().collectAsStateWithLifecycle(emptyList())
     val updates = library.count { it.newChapters > 0 }
+    val unseenUpdates by container.library.observeUnseenUpdates().collectAsStateWithLifecycle(0)
 
     AppUpdatePrompt()
 
@@ -179,8 +184,13 @@ fun AppNavigation(openWorkId: Long?, onOpenWorkHandled: () -> Unit) {
                             selected = route == item.route,
                             onClick = { navigator.tab(item.route) },
                             icon = {
-                                if (item.route == Routes.LIBRARY && updates > 0) {
-                                    BadgedBox(badge = { Badge { Text(updates.toString()) } }) { Icon(item.icon, contentDescription = null) }
+                                val badge = when (item.route) {
+                                    Routes.LIBRARY -> updates
+                                    Routes.UPDATES -> unseenUpdates
+                                    else -> 0
+                                }
+                                if (badge > 0) {
+                                    BadgedBox(badge = { Badge { Text(badge.toString()) } }) { Icon(item.icon, contentDescription = null) }
                                 } else {
                                     Icon(item.icon, contentDescription = null)
                                 }
@@ -200,6 +210,7 @@ fun AppNavigation(openWorkId: Long?, onOpenWorkHandled: () -> Unit) {
             composable(Routes.CATEGORIES) { CategoriesScreen(navigator) }
             composable(Routes.SEARCH) { SearchScreen(navigator) }
             composable(Routes.LIBRARY) { LibraryScreen(navigator) }
+            composable(Routes.UPDATES) { UpdatesScreen(navigator) }
             composable(Routes.SETTINGS) { SettingsScreen(navigator) }
             composable(Routes.BLOCKED) { BlockedScreen(navigator) }
             composable(Routes.READER_SETTINGS) { ReaderSettingsScreen(navigator) }

@@ -1,5 +1,8 @@
 package com.ao3reader.ui.library
 
+import com.ao3reader.ui.components.agoLabel
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -210,8 +213,30 @@ fun LibraryScreen(nav: Navigator) {
                 if (shown.isEmpty()) {
                     item(key = "empty") { EmptyLibrary(works.isEmpty()) }
                 }
+                // Favorites first, as one list whatever the grouping.
+                val pinned = shown.filter { it.pinned }
+                val rest = shown.filterNot { it.pinned }
+                fun togglePin(w: LibraryWork) {
+                    scope.launch {
+                        container.library.setPinned(w.toSummary(), !w.pinned)
+                        snackbar.showSnackbar(if (w.pinned) "Unpinned ${w.title}" else "Pinned ${w.title} to the top")
+                    }
+                }
+                if (pinned.isNotEmpty()) {
+                    item(key = "h-pinned") { SeriesHeader("Favorites", pinned.size, pinned.sumOf { it.newChapters }, collapsed = false, onToggle = {}) }
+                    items(pinned, key = { "p-${it.id}" }) { work -> LibraryRow(work, nav) { togglePin(work) } }
+                } else if (works.size > 3 && filter == LibraryFilter.ALL && query.isBlank()) {
+                    item(key = "pin-hint") {
+                        Text(
+                            "Tip: long-press a story to pin it to the top as a favorite.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 4.dp),
+                        )
+                    }
+                }
                 if (settings.groupLibrary) {
-                    val groups = shown.groupBy { seriesOf(it.fandoms) }.entries
+                    val groups = rest.groupBy { seriesOf(it.fandoms) }.entries
                         .sortedWith(compareByDescending<Map.Entry<String, List<LibraryWork>>> { g -> g.value.any { it.newChapters > 0 } }
                             .thenBy { if (it.key == "Other") 1 else 0 }
                             .thenBy { it.key.lowercase() })
@@ -223,11 +248,11 @@ fun LibraryScreen(nav: Navigator) {
                             }
                         }
                         if (!isCollapsed) {
-                            items(list, key = { "w-${it.id}" }) { work -> LibraryRow(work, nav) }
+                            items(list, key = { "w-${it.id}" }) { work -> LibraryRow(work, nav) { togglePin(work) } }
                         }
                     }
                 } else {
-                    items(shown, key = { "w-${it.id}" }) { work -> LibraryRow(work, nav) }
+                    items(rest, key = { "w-${it.id}" }) { work -> LibraryRow(work, nav) { togglePin(work) } }
                 }
             }
         }
@@ -259,15 +284,16 @@ private fun SeriesHeader(name: String, count: Int, newChapters: Int, collapsed: 
 }
 
 /** One compact library entry: cover, title, author and progress on two short lines. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun LibraryRow(work: LibraryWork, nav: Navigator) {
+private fun LibraryRow(work: LibraryWork, nav: Navigator, onLongPress: () -> Unit) {
     val total = work.chaptersPosted.coerceAtLeast(1)
     val read = work.lastReadChapter.coerceAtMost(total)
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .clickable { nav.work(work.id) }
+            .combinedClickable(onClick = { nav.work(work.id) }, onLongClick = onLongPress)
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -282,15 +308,21 @@ private fun LibraryRow(work: LibraryWork, nav: Navigator) {
                 Text(
                     buildString {
                         append(work.authors.joinToString().ifBlank { "Anonymous" })
+                        if (work.words > 0) append(" · ${compactCount(work.words)} words")
                         append(" · ")
                         append(if (work.lastReadChapter == 0) "${work.chaptersPosted} ch" else "ch $read/${work.chaptersPosted}")
-                        if (!work.complete) append(" · ongoing")
+                        append(if (work.complete) " · complete" else " · ongoing")
+                        agoLabel(work.updated)?.let { append(" · updated $it") }
                     },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
+                if (work.pinned) {
+                    Spacer(Modifier.width(4.dp))
+                    Icon(Icons.Default.PushPin, contentDescription = "Pinned", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(12.dp))
+                }
                 if (work.liked) {
                     Spacer(Modifier.width(4.dp))
                     Icon(Icons.Default.Favorite, contentDescription = "Liked", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(12.dp))
@@ -343,4 +375,12 @@ private fun EmptyLibrary(libraryEmpty: Boolean) {
             textAlign = TextAlign.Center,
         )
     }
+}
+
+/** 950, 12.4k, 1.2M */
+internal fun compactCount(n: Int): String = when {
+    n < 1_000 -> n.toString()
+    n < 100_000 -> String.format(java.util.Locale.US, "%.1fk", n / 1_000.0).replace(".0k", "k")
+    n < 1_000_000 -> "${n / 1_000}k"
+    else -> String.format(java.util.Locale.US, "%.1fM", n / 1_000_000.0).replace(".0M", "M")
 }

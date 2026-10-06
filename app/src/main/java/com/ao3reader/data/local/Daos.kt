@@ -39,6 +39,30 @@ interface LibraryDao {
 
     @Query("DELETE FROM library WHERE followed = 0 AND downloadedChapters = 0 AND liked = 0 AND lastReadChapter = 0")
     suspend fun pruneOrphans()
+
+    @Query("UPDATE library SET pinned = :pinned WHERE id = :id")
+    suspend fun setPinned(id: Long, pinned: Boolean)
+}
+
+@Dao
+interface UpdateDao {
+    @Query("SELECT * FROM updates ORDER BY detectedAt DESC LIMIT 300")
+    fun observeAll(): Flow<List<UpdateEvent>>
+
+    @Query("SELECT COUNT(*) FROM updates WHERE seen = 0")
+    fun observeUnseen(): Flow<Int>
+
+    @Insert
+    suspend fun insert(event: UpdateEvent)
+
+    @Query("UPDATE updates SET seen = 1 WHERE seen = 0")
+    suspend fun markAllSeen()
+
+    @Query("DELETE FROM updates")
+    suspend fun clear()
+
+    @Query("DELETE FROM updates WHERE detectedAt < :before")
+    suspend fun deleteOlderThan(before: Long)
 }
 
 @Dao

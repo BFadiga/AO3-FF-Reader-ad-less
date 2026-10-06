@@ -3,6 +3,7 @@ package com.ao3reader.data.repo
 import com.ao3reader.data.local.AppDatabase
 import com.ao3reader.data.local.DownloadStore
 import com.ao3reader.data.local.LibraryWork
+import com.ao3reader.data.local.UpdateEvent
 import com.ao3reader.data.model.Chapter
 import com.ao3reader.data.model.WorkSummary
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +19,26 @@ class LibraryRepository(
     fun observeLibrary(): Flow<List<LibraryWork>> = dao.observeAll()
     fun observeWork(id: Long): Flow<LibraryWork?> = dao.observe(id)
 
+    private val updateDao = db.updates()
+    fun observeUpdates(): Flow<List<UpdateEvent>> = updateDao.observeAll()
+    fun observeUnseenUpdates(): Flow<Int> = updateDao.observeUnseen()
+    suspend fun markUpdatesSeen() = updateDao.markAllSeen()
+    suspend fun clearUpdates() = updateDao.clear()
+
+    suspend fun recordUpdate(event: UpdateEvent) {
+        updateDao.insert(event)
+        updateDao.deleteOlderThan(System.currentTimeMillis() - 90L * 24 * 3_600_000)
+    }
+
+    /** Pins a work to the top of the library (following it if it wasn't already). */
+    suspend fun setPinned(work: WorkSummary, pinned: Boolean) {
+        val existing = dao.get(work.id)
+        when {
+            existing != null -> dao.upsert(existing.copy(pinned = pinned, followed = existing.followed || pinned))
+            pinned -> dao.upsert(LibraryWork.from(work, followed = true).copy(pinned = true))
+        }
+    }
+
     suspend fun follow(work: WorkSummary) {
         val existing = dao.get(work.id)
         dao.upsert(existing?.withMetadata(work)?.copy(followed = true) ?: LibraryWork.from(work, followed = true))
@@ -25,7 +46,7 @@ class LibraryRepository(
 
     suspend fun unfollow(id: Long) {
         val existing = dao.get(id) ?: return
-        if (existing.isDownloaded || existing.liked) dao.upsert(existing.copy(followed = false, newChapters = 0)) else dao.delete(id)
+        if (existing.isDownloaded || existing.liked) dao.upsert(existing.copy(followed = false, newChapters = 0, pinned = false)) else dao.delete(id)
     }
 
     /** Kudos left / favorited. Liked works show under the library's "Liked" filter. */

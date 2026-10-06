@@ -3,6 +3,7 @@ package com.ao3reader.work
 import android.content.Context
 import com.ao3reader.data.prefs.SettingsRepository
 import com.ao3reader.data.local.LibraryWork
+import com.ao3reader.data.local.UpdateEvent
 import com.ao3reader.data.model.Site
 import com.ao3reader.data.repo.LibraryRepository
 import com.ao3reader.data.repo.WorksRepository
@@ -37,6 +38,13 @@ class UpdateChecker(
                         lastCheckedAt = now,
                     )
                     library.upsert(fresh)
+                    library.recordUpdate(
+                        UpdateEvent(
+                            workId = work.id, title = work.title, authors = work.authors, coverUrl = work.coverUrl,
+                            rating = work.rating, chaptersAdded = added, firstNewChapter = work.chaptersPosted + 1,
+                            latestChapterTitle = latestTitle,
+                        ),
+                    )
                     if (prefs.autoDownloadUpdates && work.isDownloaded) runCatching { library.download(work.id) }
                     if (notify && prefs.notificationsEnabled) {
                         Notifications.showNewChapters(context, fresh, added, latestTitle)
