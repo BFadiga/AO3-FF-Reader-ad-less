@@ -20,7 +20,9 @@ import kotlin.coroutines.resumeWithException
 
 /** Thrown when a site shows a "verify you are human" check that has to be done by hand. */
 class VerificationNeededException(val url: String) :
-    Exception("FanFiction.net wants to check that you're human. Tap Verify, complete the check, then come back.")
+    Exception("${siteOf(url)} wants to check that you're human. Tap Verify, complete the check, then come back.")
+
+private fun siteOf(url: String) = if (url.contains("wattpad.com")) "Wattpad" else "FanFiction.net"
 
 /**
  * Loads pages in an off-screen WebView. Used for FanFiction.net, which sits behind Cloudflare's

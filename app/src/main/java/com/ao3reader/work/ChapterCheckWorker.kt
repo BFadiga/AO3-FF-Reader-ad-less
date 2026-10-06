@@ -18,7 +18,7 @@ class ChapterCheckWorker(context: Context, params: WorkerParameters) : Coroutine
         val container = (applicationContext as Ao3App).container
         // Pick up follows added on the sites themselves before checking for new chapters.
         val s = container.settings.settings.first()
-        if (s.ao3User != null || s.ffnUser != null) runCatching { container.accounts.sync(detailLimit = 20) }
+        if (s.anySignedIn) runCatching { container.accounts.sync(detailLimit = 20) }
         val result = container.updateChecker.checkAll(notify = true)
         return if (result.offline) Result.retry() else Result.success()
     }

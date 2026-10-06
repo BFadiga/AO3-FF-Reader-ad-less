@@ -1,14 +1,15 @@
 # AO3 Reader
 
-A personal, ad-free Android reader for [Archive of Our Own](https://archiveofourown.org) and
-[FanFiction.net](https://www.fanfiction.net). Unofficial; not affiliated with either site or the OTW.
+A personal, ad-free Android reader for [Archive of Our Own](https://archiveofourown.org),
+[FanFiction.net](https://www.fanfiction.net) and [Wattpad](https://www.wattpad.com). Unofficial; not affiliated
+with any of these sites or the OTW.
 Please consider donating to the OTW, which runs AO3.
 
 ## Features
 
-- **Two sites, one library**: an AO3 / FF.net switch at the top right of Search and Categories. Each site keeps
-  its own tags, fandoms, favorites and block list; the library holds works from both, grouped by series (fandom)
-  or as one list.
+- **Three sites, one library**: an AO3 / FF.net / Wattpad switch at the top right of Search and Categories. Each
+  site keeps its own tags, fandoms, favorites and block list; the library holds works from all of them, grouped by
+  series (fandom) or as one list.
 - **Accounts**: sign in on each site's own login page inside the app. Follows (AO3 subscriptions, FanFiction.net
   story alerts) and likes (FanFiction.net favorites) are imported, and following or liking in the app is mirrored
   on the site.
@@ -17,6 +18,11 @@ Please consider donating to the OTW, which runs AO3.
 - **FanFiction.net search**: pick a fandom from a searchable list, tap genres to include or exclude them, add
   characters, filter by rating, status, language and word count. Blocked genres and characters are excluded
   automatically. Covers are shown in listings and the library; reviews can be read in the app.
+- **Wattpad**: search by text and tags (add pinned tags with one tap, leave tags out, hide mature or unfinished
+  stories), browse genres, read parts and comments, vote, and sync your Wattpad library when signed in.
+  Blocked Wattpad tags are left out of searches automatically.
+- **App updates**: every push to `main` publishes a GitHub release; Settings > App updates downloads and installs
+  it (the app can also ask when it opens).
 
 - **Categories tab**: favorite tags grouped by section (fandoms & series, genres & tropes, point of view, characters & ships),
   browse fandoms by medium (Anime & Manga, TV, Video Games…), quick genre/POV/relationship-category chips,
@@ -35,7 +41,7 @@ Please consider donating to the OTW, which runs AO3.
 - **Blocking**: block any tag (including ratings and warnings) or author; matching works are hidden or collapsed.
 - **Appearance**: dark theme by default, light/system options, pure-black mode, accent colors,
   wallpaper colors (Android 12+), compact or comfortable lists.
-- Opens `archiveofourown.org/works/...` and `fanfiction.net/s/...` links shared from a browser.
+- Opens `archiveofourown.org/works/...`, `fanfiction.net/s/...` and `wattpad.com/story/...` links shared from a browser.
 
 ## How it talks to the sites
 

@@ -31,15 +31,16 @@ class AccountRepository(
             when (site) {
                 Site.AO3 -> works.ao3.signedInUser()
                 Site.FFN -> works.ffn.signedInUser()
+                Site.WATTPAD -> works.wattpad.signedInUser()
             }
         }.getOrNull() ?: return null
-        settings.update { if (site == Site.AO3) it.copy(ao3User = user) else it.copy(ffnUser = user) }
+        settings.update { it.withUser(site, user) }
         return user
     }
 
     suspend fun signOut(site: Site) {
         cookies.clear(site.baseUrl)
-        settings.update { if (site == Site.AO3) it.copy(ao3User = null) else it.copy(ffnUser = null) }
+        settings.update { it.withUser(site, null) }
     }
 
     /**
@@ -60,10 +61,19 @@ class AccountRepository(
             runCatching { imported += library.import(works.ffn.favoriteStories(), follow = false, like = true) }
                 .onFailure { errors += "FanFiction.net favorites: ${it.message}" }
         }
+        s.wattpadUser?.let { user ->
+            if (user.isBlank()) errors += "Wattpad: couldn't read your username, so your library wasn't imported."
+            else runCatching { imported += library.import(works.wattpad.library(user), follow = true, like = false) }
+                .onFailure { errors += "Wattpad: ${it.message}" }
+        }
         var details = 0
         for (entry in library.needingMetadata().take(detailLimit)) {
             val fresh = runCatching {
-                if (entry.site == Site.AO3) works.ao3.workMeta(entry.id) else works.ffn.fullWork(entry.id).summary
+                when (entry.site) {
+                    Site.AO3 -> works.ao3.workMeta(entry.id)
+                    Site.FFN -> works.ffn.fullWork(entry.id).summary
+                    Site.WATTPAD -> works.wattpad.fullWork(entry.id).summary
+                }
             }.getOrNull() ?: continue
             library.get(entry.id)?.let { library.upsert(it.withMetadata(fresh)) }
             details++
@@ -91,6 +101,11 @@ class AccountRepository(
                 runCatching { works.ffn.addToAccount(work.id, follow = true, favorite = false) }
                     .fold({ ok -> if (ok) "Also followed on FanFiction.net." else "Couldn't follow on FanFiction.net." }, { "Couldn't follow on FanFiction.net: ${it.message}" })
             }
+            Site.WATTPAD -> {
+                val user = s.wattpadUser?.takeIf { it.isNotBlank() } ?: return null
+                runCatching { works.wattpad.setInLibrary(user, work.id, follow) }
+                    .fold({ if (follow) "Also added to your Wattpad library." else "Also removed from your Wattpad library." }, { "Couldn't update Wattpad: ${it.message}" })
+            }
         }
     }
 
@@ -108,11 +123,16 @@ class AccountRepository(
                 works.ffn.addToAccount(work.id, follow = false, favorite = true) -> "Favorited on FanFiction.net. Thanks for supporting the author!"
                 else -> "Liked here, but FanFiction.net didn't accept the favorite."
             }
+            Site.WATTPAD -> when {
+                s.wattpadUser == null -> "Liked here. Sign in to Wattpad in Settings to vote for it there too."
+                runCatching { works.wattpad.vote(work.id) }.isSuccess -> "Voted on Wattpad. Thanks for supporting the author!"
+                else -> "Liked here, but Wattpad didn't accept the vote."
+            }
         }
         library.setLiked(work, true)
         return message
     }
 
-    /** Only the app's own flag: kudos can't be taken back, and FanFiction.net removes favorites on its site. */
+    /** Only the app's own flag: kudos can't be taken back, and the other sites remove favorites/votes on their own pages. */
     suspend fun unlike(work: WorkSummary) = library.setLiked(work, false)
 }

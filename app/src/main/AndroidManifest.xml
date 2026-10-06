@@ -46,6 +46,16 @@
                 <data android:host="fanfiction.net" />
                 <data android:pathPrefix="/s/" />
             </intent-filter>
+            <!-- Open Wattpad story links in the app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" />
+                <data android:host="www.wattpad.com" />
+                <data android:host="wattpad.com" />
+                <data android:pathPrefix="/story/" />
+            </intent-filter>
         </activity>
 
         <provider

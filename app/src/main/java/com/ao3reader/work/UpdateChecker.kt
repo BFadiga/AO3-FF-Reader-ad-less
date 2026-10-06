@@ -62,8 +62,8 @@ class UpdateChecker(
             val chapters = works.ao3.chapterIndex(work.id)
             Triple(chapters.size, chapters.lastOrNull()?.title.orEmpty(), chapters.lastOrNull()?.date)
         }
-        Site.FFN -> {
-            val w = works.ffn.fullWork(work.id, forceRefresh = true)
+        Site.FFN, Site.WATTPAD -> {
+            val w = works.fullWork(work.id, forceRefresh = true)
             Triple(w.chapters.size, w.chapters.lastOrNull()?.title.orEmpty(), w.summary.updated.ifBlank { null })
         }
     }

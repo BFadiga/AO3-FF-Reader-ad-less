@@ -26,6 +26,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.ao3reader.data.model.Site
 import com.ao3reader.data.remote.Ao3Urls
 import com.ao3reader.data.remote.ffn.FfnUrls
+import com.ao3reader.data.remote.wattpad.WattpadUrls
 import com.ao3reader.ui.Navigator
 import com.ao3reader.ui.components.ScreenScaffold
 import com.ao3reader.ui.components.appContainer
@@ -46,7 +47,11 @@ fun LoginScreen(site: Site, nav: Navigator) {
     // Only treat leaving a sign-in page as success once a sign-in page was actually shown.
     var sawLoginPage by remember { mutableStateOf(false) }
     var openedLoginLink by remember { mutableStateOf(false) }
-    val loginUrl = if (site == Site.AO3) Ao3Urls.LOGIN else FfnUrls.LOGIN
+    val loginUrl = when (site) {
+        Site.AO3 -> Ao3Urls.LOGIN
+        Site.FFN -> FfnUrls.LOGIN
+        Site.WATTPAD -> WattpadUrls.LOGIN
+    }
 
     fun confirm() {
         if (checking) return

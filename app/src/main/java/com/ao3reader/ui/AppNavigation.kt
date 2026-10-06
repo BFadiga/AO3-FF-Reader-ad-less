@@ -1,5 +1,7 @@
 package com.ao3reader.ui
 
+import com.ao3reader.data.model.WattpadFilter
+import com.ao3reader.ui.search.wattpadTag
 import com.ao3reader.update.AppUpdatePrompt
 import android.net.Uri
 import androidx.compose.foundation.layout.WindowInsets
@@ -103,12 +105,20 @@ class Navigator(private val nav: NavHostController, private val container: AppCo
         tab(Routes.SEARCH)
     }
 
+    /** Switches to the Search tab on Wattpad and runs [filter]. */
+    fun wattpadSearch(filter: WattpadFilter) {
+        container.wattpadSearchRequest.value = filter
+        scope.launch { container.settings.update { it.copy(currentSite = Site.WATTPAD) } }
+        tab(Routes.SEARCH)
+    }
+
     /**
      * Opens a tag's works. On AO3 that's the tag's own page; on FanFiction.net a genre, character or
      * fandom becomes a search filter, keeping the fandom being browsed when there is one.
      */
     fun browseTag(site: Site, tag: String, fandomHint: String? = null, isFandom: Boolean = false) {
         if (site == Site.AO3) return tag(tag)
+        if (site == Site.WATTPAD) return wattpadSearch(WattpadFilter(includeTags = listOf(wattpadTag(tag))))
         scope.launch {
             val genre = FfnGenres.byName(tag)
             val filter = when {

@@ -85,3 +85,14 @@ data class FfnFilterOptions(
 data class Review(val author: String, val meta: String, val text: String)
 
 data class ReviewPage(val reviews: List<Review>, val page: Int, val totalPages: Int)
+
+/** A Wattpad search: free text plus tags; tags to exclude and completion are applied in the app. */
+data class WattpadFilter(
+    val query: String = "",
+    val includeTags: List<String> = emptyList(),
+    val excludeTags: List<String> = emptyList(),
+    val mature: Boolean = true,
+    val completeOnly: Boolean = false,
+) {
+    val isEmpty: Boolean get() = query.isBlank() && includeTags.isEmpty()
+}

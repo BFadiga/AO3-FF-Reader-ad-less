@@ -73,6 +73,7 @@ fun SearchScreen(nav: Navigator) {
         when (site) {
             Site.AO3 -> Ao3Search(nav, settings, Modifier.padding(padding))
             Site.FFN -> FfnSearch(nav, settings, Modifier.padding(padding))
+            Site.WATTPAD -> WattpadSearch(nav, settings, Modifier.padding(padding))
         }
     }
 }

@@ -53,13 +53,13 @@ fun TagActionDialog(
     val favorites by container.filters.favorites(site).collectAsStateWithLifecycle(emptyList())
     val isFavorite = favorites.any { it.name == tag }
     val target = when {
-        site == Site.AO3 -> tag
+        site != Site.FFN -> tag
         fandomPath != null -> fandomPath
         FfnGenres.byName(tag) != null -> "genre:" + FfnGenres.byName(tag)!!.value
         isFandom -> "fandom:$tag"
         else -> "char:$tag"
     }
-    val sections = if (site == Site.AO3) FilterRepository.SECTIONS else FilterRepository.FFN_SECTIONS
+    val sections = FilterRepository.sectionsFor(site)
     var pickingSection by remember { mutableStateOf(false) }
 
     AlertDialog(

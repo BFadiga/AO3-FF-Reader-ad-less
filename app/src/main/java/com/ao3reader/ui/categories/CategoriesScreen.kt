@@ -100,6 +100,7 @@ fun CategoriesScreen(nav: Navigator) {
         when (site) {
             Site.AO3 -> Ao3Categories(nav, Modifier.padding(padding))
             Site.FFN -> FfnCategories(nav, Modifier.padding(padding))
+            Site.WATTPAD -> WattpadCategories(nav, Modifier.padding(padding))
         }
     }
 }
@@ -302,6 +303,70 @@ private fun FfnCategories(nav: Navigator, modifier: Modifier) {
             fandomPath = fav?.target?.takeIf { it.startsWith("/") },
             isFandom = fav?.target?.startsWith("fandom:") == true,
             onBrowse = { fav?.let { open(it) } ?: nav.browseTag(Site.FFN, tag) },
+            onDismiss = { dialogTag = null },
+        )
+    }
+}
+
+/** Wattpad's popular genres (which it treats as tags) plus Wattpad favorites, kept apart from the other sites. */
+private val WATTPAD_GENRES = listOf(
+    "action", "adventure", "chicklit", "fanfiction", "fantasy", "historicalfiction", "horror", "humor", "lgbt",
+    "mystery", "newadult", "paranormal", "poetry", "romance", "sciencefiction", "shortstory", "teenfiction",
+    "thriller", "vampire", "werewolf",
+)
+
+@Composable
+private fun WattpadCategories(nav: Navigator, modifier: Modifier) {
+    val container = appContainer()
+    val favorites by container.filters.favorites(Site.WATTPAD).collectAsStateWithLifecycle(emptyList())
+    var dialogTag by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        item {
+            SectionTitle("Favorites", Icons.Default.Star)
+            if (favorites.isEmpty()) {
+                Text(
+                    "Long-press a tag here or on a story to pin it.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        favorites.groupBy { it.section }.forEach { (section, tags) ->
+            item(key = "wp-fav-$section") {
+                Column {
+                    Text(section, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.height(6.dp))
+                    TagChips(
+                        tags = tags.map { it.name },
+                        highlighted = true,
+                        onClick = { nav.browseTag(Site.WATTPAD, it) },
+                        onLongClick = { dialogTag = it to section },
+                    )
+                }
+            }
+        }
+        item {
+            SectionTitle("Genres", null)
+            Hint()
+            TagChips(
+                WATTPAD_GENRES,
+                onClick = { nav.browseTag(Site.WATTPAD, it) },
+                onLongClick = { dialogTag = it to FilterRepository.SECTION_GENRES },
+            )
+        }
+    }
+
+    dialogTag?.let { (tag, section) ->
+        TagActionDialog(
+            site = Site.WATTPAD,
+            tag = tag,
+            suggestedSection = section,
+            onBrowse = { nav.browseTag(Site.WATTPAD, tag) },
             onDismiss = { dialogTag = null },
         )
     }

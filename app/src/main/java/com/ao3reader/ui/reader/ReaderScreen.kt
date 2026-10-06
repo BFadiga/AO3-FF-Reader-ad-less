@@ -312,7 +312,7 @@ fun ReaderScreen(workId: Long, startChapter: Int, nav: Navigator) {
                         web.keepScreenOn = settings.reader.keepScreenOn
                         if (loaded[0] != html) {
                             loaded[0] = html
-                            val base = if (WorkIds.site(workId) == Site.FFN) FfnUrls.BASE + "/" else "https://archiveofourown.org/"
+                            val base = WorkIds.site(workId).baseUrl + "/"
                             web.loadDataWithBaseURL(base, html, "text/html", "utf-8", null)
                         }
                     },

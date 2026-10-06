@@ -28,7 +28,7 @@ class Ao3App : Application(), ImageLoaderFactory {
         // Log back in quietly: confirm saved sign-ins still work and pick up follows made on the sites.
         scope.launch {
             val s = container.settings.settings.first()
-            if ((s.ao3User != null || s.ffnUser != null) && System.currentTimeMillis() - s.lastSyncAt > 6 * 3_600_000L) {
+            if (s.anySignedIn && System.currentTimeMillis() - s.lastSyncAt > 6 * 3_600_000L) {
                 runCatching { container.accounts.sync() }
             }
         }

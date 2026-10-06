@@ -78,12 +78,28 @@ data class AppSettings(
     /** Signed-in usernames; null when signed out ("" when signed in but the name isn't known). */
     val ao3User: String? = null,
     val ffnUser: String? = null,
+    val wattpadUser: String? = null,
     /** Push follows and likes made in the app to the site account too. */
     val syncToSites: Boolean = true,
     val lastSyncAt: Long = 0,
     /** Look for a newer build of the app on GitHub when it opens. */
     val checkAppUpdates: Boolean = true,
-)
+) {
+    /** The signed-in username on [site], or null. */
+    fun userOn(site: Site): String? = when (site) {
+        Site.AO3 -> ao3User
+        Site.FFN -> ffnUser
+        Site.WATTPAD -> wattpadUser
+    }
+
+    val anySignedIn: Boolean get() = ao3User != null || ffnUser != null || wattpadUser != null
+
+    fun withUser(site: Site, user: String?): AppSettings = when (site) {
+        Site.AO3 -> copy(ao3User = user)
+        Site.FFN -> copy(ffnUser = user)
+        Site.WATTPAD -> copy(wattpadUser = user)
+    }
+}
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -117,6 +133,7 @@ class SettingsRepository(private val context: Context) {
         val group = booleanPreferencesKey("group_library")
         val ao3User = stringPreferencesKey("ao3_user")
         val ffnUser = stringPreferencesKey("ffn_user")
+        val wattpadUser = stringPreferencesKey("wattpad_user")
         val syncToSites = booleanPreferencesKey("sync_to_sites")
         val lastSync = longPreferencesKey("last_sync")
         val appUpdates = booleanPreferencesKey("check_app_updates")
@@ -170,6 +187,7 @@ class SettingsRepository(private val context: Context) {
             groupLibrary = p[K.group] ?: d.groupLibrary,
             ao3User = p[K.ao3User],
             ffnUser = p[K.ffnUser],
+            wattpadUser = p[K.wattpadUser],
             syncToSites = p[K.syncToSites] ?: d.syncToSites,
             lastSyncAt = p[K.lastSync] ?: d.lastSyncAt,
             checkAppUpdates = p[K.appUpdates] ?: d.checkAppUpdates,
@@ -205,6 +223,7 @@ class SettingsRepository(private val context: Context) {
         p[K.group] = s.groupLibrary
         if (s.ao3User != null) p[K.ao3User] = s.ao3User else p.remove(K.ao3User)
         if (s.ffnUser != null) p[K.ffnUser] = s.ffnUser else p.remove(K.ffnUser)
+        if (s.wattpadUser != null) p[K.wattpadUser] = s.wattpadUser else p.remove(K.wattpadUser)
         p[K.syncToSites] = s.syncToSites
         p[K.lastSync] = s.lastSyncAt
         p[K.appUpdates] = s.checkAppUpdates

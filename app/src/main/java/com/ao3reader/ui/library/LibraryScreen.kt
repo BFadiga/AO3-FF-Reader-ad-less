@@ -111,7 +111,7 @@ fun LibraryScreen(nav: Navigator) {
         refreshing = true
         scope.launch {
             val s = container.settings.settings.first()
-            if (s.ao3User != null || s.ffnUser != null) runCatching { container.accounts.sync(detailLimit = 20) }
+            if (s.anySignedIn) runCatching { container.accounts.sync(detailLimit = 20) }
             val result = container.updateChecker.checkAll(notify = false)
             refreshing = false
             snackbar.showSnackbar(

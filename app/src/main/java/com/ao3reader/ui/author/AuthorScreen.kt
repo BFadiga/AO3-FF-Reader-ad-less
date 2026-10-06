@@ -19,6 +19,7 @@ import com.ao3reader.AppContainer
 import com.ao3reader.data.model.Site
 import com.ao3reader.data.model.WorkPage
 import com.ao3reader.data.remote.ffn.FfnUrls
+import com.ao3reader.data.remote.wattpad.WattpadUrls
 import com.ao3reader.data.prefs.AppSettings
 import com.ao3reader.data.repo.BlockLists
 import com.ao3reader.ui.Navigator
@@ -42,6 +43,10 @@ class AuthorViewModel(c: AppContainer, val site: Site, val authorId: String, val
                 if (n.isNotBlank()) title = n
                 WorkPage(works, 1, 1, heading = "${works.size} stories")
             }
+            Site.WATTPAD -> {
+                val works = c.wattpad.authorStories(authorId.ifBlank { name })
+                WorkPage(works, 1, 1, heading = "${works.size} stories")
+            }
         }
     }
 
@@ -62,9 +67,9 @@ fun AuthorScreen(site: Site, authorId: String, name: String, nav: Navigator) {
         title = vm.title,
         onBack = { nav.back() },
         actions = {
-            if (site == Site.FFN && authorId.isNotBlank()) {
-                IconButton(onClick = { nav.web(FfnUrls.author(authorId)) }) {
-                    Icon(Icons.Default.OpenInBrowser, contentDescription = "Profile on FanFiction.net")
+            if (site != Site.AO3 && authorId.isNotBlank()) {
+                IconButton(onClick = { nav.web(if (site == Site.FFN) FfnUrls.author(authorId) else WattpadUrls.profile(authorId)) }) {
+                    Icon(Icons.Default.OpenInBrowser, contentDescription = "Profile on ${site.label}")
                 }
             }
             IconButton(onClick = { blockDialog = true }) { Icon(Icons.Default.Block, contentDescription = "Block author") }

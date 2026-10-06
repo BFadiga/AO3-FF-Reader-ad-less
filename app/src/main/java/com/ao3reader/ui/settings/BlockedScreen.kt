@@ -35,6 +35,7 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import com.ao3reader.data.local.BlockKind
 import com.ao3reader.data.model.FfnGenres
 import com.ao3reader.data.model.Site
+import com.ao3reader.ui.search.wattpadTag
 import com.ao3reader.data.prefs.AppSettings
 import com.ao3reader.ui.Navigator
 import com.ao3reader.ui.components.ScreenScaffold
@@ -68,17 +69,18 @@ fun BlockedScreen(nav: Navigator) {
                             selected = site == s,
                             onClick = { site = s },
                             shape = SegmentedButtonDefaults.itemShape(i, Site.entries.size),
-                        ) { Text(s.label) }
+                        ) { Text(s.shortLabel, maxLines = 1) }
                     }
                 }
             }
             item {
                 Text(
-                    if (site == Site.AO3) {
-                        "Works carrying a blocked tag (including ratings like \"Explicit\" or warnings like \"Major Character Death\") " +
+                    when (site) {
+                        Site.AO3 -> "Works carrying a blocked tag (including ratings like \"Explicit\" or warnings like \"Major Character Death\") " +
                             "or written by a blocked author are hidden from search and tag listings."
-                    } else {
-                        "Stories with a blocked genre, character or rating (K, K+, T, M), or by a blocked author, are hidden. " +
+                        Site.WATTPAD -> "Stories with a blocked tag (e.g. \"smut\" or \"yandere\") or by a blocked author are hidden. " +
+                            "Mature stories can also be turned off in the Wattpad search options."
+                        Site.FFN -> "Stories with a blocked genre, character or rating (K, K+, T, M), or by a blocked author, are hidden. " +
                             "Blocked genres and characters are also left out of FanFiction.net searches automatically."
                     },
                     style = MaterialTheme.typography.bodySmall,
@@ -89,6 +91,12 @@ fun BlockedScreen(nav: Navigator) {
             item {
                 if (site == Site.AO3) {
                     TagSearchField("Block a tag", onPick = { t -> scope.launch { container.filters.block(site, BlockKind.TAG, t) } })
+                } else if (site == Site.WATTPAD) {
+                    TagSearchField(
+                        "Block a tag",
+                        onPick = { t -> scope.launch { container.filters.block(site, BlockKind.TAG, t) } },
+                        suggest = { term -> listOf(wattpadTag(term)) },
+                    )
                 } else {
                     TagSearchField(
                         "Block a genre, character or rating",

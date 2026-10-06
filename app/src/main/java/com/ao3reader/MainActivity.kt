@@ -16,6 +16,7 @@ import com.ao3reader.data.model.WorkIds
 import com.ao3reader.data.prefs.AppSettings
 import com.ao3reader.data.remote.Ao3Urls
 import com.ao3reader.data.remote.ffn.FfnUrls
+import com.ao3reader.data.remote.wattpad.WattpadUrls
 import com.ao3reader.ui.AppNavigation
 import com.ao3reader.ui.theme.Ao3Theme
 import com.ao3reader.work.Notifications
@@ -52,7 +53,11 @@ class MainActivity : ComponentActivity() {
         intent ?: return
         val fromNotification = intent.getLongExtra(Notifications.EXTRA_WORK_ID, -1L)
         val fromLink = intent.data?.toString()?.let { url ->
-            if (url.contains("fanfiction.net")) FfnUrls.storyIdFrom(url)?.let { WorkIds.ffn(it) } else Ao3Urls.workIdFrom(url)
+            when {
+                url.contains("fanfiction.net") -> FfnUrls.storyIdFrom(url)?.let { WorkIds.ffn(it) }
+                url.contains("wattpad.com") -> WattpadUrls.storyIdFrom(url)?.let { WorkIds.wattpad(it) }
+                else -> Ao3Urls.workIdFrom(url)
+            }
         }
         openWorkId = fromNotification.takeIf { it > 0 } ?: fromLink
     }

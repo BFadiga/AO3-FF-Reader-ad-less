@@ -80,7 +80,8 @@ fun SettingsScreen(nav: Navigator) {
             Section("Accounts")
             AccountRow(Site.AO3, settings.ao3User, nav, onSignOut = { scope.launch { container.accounts.signOut(Site.AO3) } })
             AccountRow(Site.FFN, settings.ffnUser, nav, onSignOut = { scope.launch { container.accounts.signOut(Site.FFN) } })
-            if (settings.ao3User != null || settings.ffnUser != null) {
+            AccountRow(Site.WATTPAD, settings.wattpadUser, nav, onSignOut = { scope.launch { container.accounts.signOut(Site.WATTPAD) } })
+            if (settings.anySignedIn) {
                 ListItem(
                     headlineContent = { Text(if (syncing) "Syncing…" else "Sync follows and likes now") },
                     supportingContent = {
@@ -107,7 +108,7 @@ fun SettingsScreen(nav: Navigator) {
                 SwitchRow(
                     "Mirror follows and likes on the sites",
                     settings.syncToSites,
-                    "Following here also subscribes on AO3 / follows on FanFiction.net",
+                    "Following here also subscribes on AO3, follows on FanFiction.net and adds to your Wattpad library",
                 ) { v -> update { it.copy(syncToSites = v) } }
             }
 
@@ -161,7 +162,7 @@ fun SettingsScreen(nav: Navigator) {
             Section("Content filters")
             NavRow(
                 "Blocked tags and authors",
-                "${blocked.count { it.site == Site.AO3 }} on AO3 · ${blocked.count { it.site == Site.FFN }} on FanFiction.net",
+                Site.entries.joinToString(" · ") { site -> "${blocked.count { it.site == site }} on ${site.shortLabel}" },
             ) { nav.blocked() }
             SwitchRow(
                 "Hide blocked works completely",
@@ -203,8 +204,8 @@ fun SettingsScreen(nav: Navigator) {
 
             Section("About")
             Text(
-                "AO3 Reader ${BuildConfig.VERSION_NAME}. An unofficial, ad-free reader for Archive of Our Own and FanFiction.net. " +
-                    "Not affiliated with either site or the Organization for Transformative Works. Please support AO3 by donating to the OTW.",
+                "AO3 Reader ${BuildConfig.VERSION_NAME}. An unofficial, ad-free reader for Archive of Our Own, FanFiction.net and Wattpad. " +
+                    "Not affiliated with any of these sites or the Organization for Transformative Works. Please support AO3 by donating to the OTW.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

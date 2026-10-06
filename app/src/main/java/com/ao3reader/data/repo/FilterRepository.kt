@@ -29,9 +29,13 @@ data class BlockList(val tags: Set<String> = emptySet(), val authors: Set<String
 }
 
 /** Each site's block list; a work is checked against the list of the site it comes from. */
-data class BlockLists(val ao3: BlockList = BlockList(), val ffn: BlockList = BlockList()) {
+data class BlockLists(val ao3: BlockList = BlockList(), val ffn: BlockList = BlockList(), val wattpad: BlockList = BlockList()) {
     fun reasonFor(work: WorkSummary): String? = forSite(work.site).reasonFor(work)
-    fun forSite(site: Site) = if (site == Site.AO3) ao3 else ffn
+    fun forSite(site: Site) = when (site) {
+        Site.AO3 -> ao3
+        Site.FFN -> ffn
+        Site.WATTPAD -> wattpad
+    }
 }
 
 class FilterRepository(db: AppDatabase) {
@@ -46,7 +50,7 @@ class FilterRepository(db: AppDatabase) {
                 authors = l.filter { it.kind == BlockKind.AUTHOR }.map { it.value.lowercase() }.toSet(),
             )
         }
-        BlockLists(of(Site.AO3), of(Site.FFN))
+        BlockLists(of(Site.AO3), of(Site.FFN), of(Site.WATTPAD))
     }
     val favorites: Flow<List<FavoriteTag>> = favoritesDao.observeAll()
 
@@ -79,6 +83,10 @@ class FilterRepository(db: AppDatabase) {
             favoritesDao.insert(FavoriteTag(Site.FFN, "Romance", SECTION_GENRES, "genre:2"))
             favoritesDao.insert(FavoriteTag(Site.FFN, "Drama", SECTION_GENRES, "genre:4"))
         }
+        if (favoritesDao.count(Site.WATTPAD) == 0) {
+            listOf("dragonballz" to SECTION_FANDOMS, "fanfiction" to SECTION_FANDOMS, "romance" to SECTION_GENRES, "drama" to SECTION_GENRES)
+                .forEach { (name, section) -> favoritesDao.insert(FavoriteTag(Site.WATTPAD, name, section)) }
+        }
     }
 
     companion object {
@@ -89,5 +97,7 @@ class FilterRepository(db: AppDatabase) {
         const val SECTION_OTHER = "Other"
         val SECTIONS = listOf(SECTION_FANDOMS, SECTION_GENRES, SECTION_POV, SECTION_CHARACTERS, SECTION_OTHER)
         val FFN_SECTIONS = listOf(SECTION_FANDOMS, SECTION_GENRES, SECTION_CHARACTERS, SECTION_OTHER)
+
+        fun sectionsFor(site: Site) = if (site == Site.FFN) FFN_SECTIONS else SECTIONS
     }
 }

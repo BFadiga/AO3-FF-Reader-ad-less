@@ -70,6 +70,7 @@ import com.ao3reader.data.model.Site
 import com.ao3reader.data.model.WorkIds
 import com.ao3reader.data.remote.Ao3Urls
 import com.ao3reader.data.remote.ffn.FfnUrls
+import com.ao3reader.data.remote.wattpad.WattpadUrls
 import com.ao3reader.ui.components.AuthorDialog
 import com.ao3reader.ui.components.Cover
 import com.ao3reader.ui.components.verificationUrl
@@ -226,8 +227,8 @@ fun WorkScreen(id: Long, nav: Navigator) {
                         }
                         context.startActivity(Intent.createChooser(send, "Share work"))
                     })
-                    if (site == Site.FFN) {
-                        DropdownMenuItem(text = { Text("Reviews") }, onClick = { menu = false; nav.reviews(id) })
+                    if (site != Site.AO3) {
+                        DropdownMenuItem(text = { Text(if (site == Site.FFN) "Reviews" else "Comments") }, onClick = { menu = false; nav.reviews(id) })
                         DropdownMenuItem(text = { Text("Open in the app's browser") }, onClick = { menu = false; nav.web(siteUrl(id)) })
                     } else {
                         DropdownMenuItem(text = { Text("Open on AO3 (comments)") }, onClick = {
@@ -295,7 +296,7 @@ fun WorkScreen(id: Long, nav: Navigator) {
                                 }
                             }
                             Text(
-                                if (site == Site.FFN) "FanFiction.net" else "Archive of Our Own",
+                                site.label,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -343,6 +344,8 @@ fun WorkScreen(id: Long, nav: Navigator) {
                             when {
                                 site == Site.AO3 && liked -> "Kudos left"
                                 site == Site.AO3 -> "Leave kudos"
+                                site == Site.WATTPAD && liked -> "Voted"
+                                site == Site.WATTPAD -> "Vote"
                                 liked -> "Favorited"
                                 else -> "Favorite"
                             },
@@ -374,14 +377,20 @@ fun WorkScreen(id: Long, nav: Navigator) {
                 item {
                     Text(
                         listOfNotNull(
-                            "${summary.words.formatted()} words",
+                            summary.words.takeIf { it > 0 }?.let { "${it.formatted()} words" },
                             "${summary.chaptersLabel} chapters",
                             if (summary.complete) "Complete" else "In progress",
                             summary.language.ifBlank { null },
-                            summary.kudos.takeIf { it > 0 }?.let { if (site == Site.FFN) "${it.formatted()} favs" else "♥ ${it.formatted()}" },
+                            summary.kudos.takeIf { it > 0 }?.let {
+                                when (site) {
+                                    Site.FFN -> "${it.formatted()} favs"
+                                    Site.WATTPAD -> "★ ${it.formatted()} votes"
+                                    Site.AO3 -> "♥ ${it.formatted()}"
+                                }
+                            },
                             summary.follows.takeIf { it > 0 }?.let { "${it.formatted()} follows" },
-                            summary.hits.takeIf { it > 0 }?.let { "${it.formatted()} hits" },
-                            summary.comments.takeIf { it > 0 && site == Site.FFN }?.let { "${it.formatted()} reviews" },
+                            summary.hits.takeIf { it > 0 }?.let { "${it.formatted()} ${if (site == Site.WATTPAD) "reads" else "hits"}" },
+                            summary.comments.takeIf { it > 0 && site != Site.AO3 }?.let { "${it.formatted()} ${if (site == Site.FFN) "reviews" else "comments"}" },
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -392,9 +401,10 @@ fun WorkScreen(id: Long, nav: Navigator) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     summary.series.forEach { Text(it, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary) }
-                    if (site == Site.FFN) {
+                    if (site != Site.AO3) {
+                        val noun = if (site == Site.FFN) "reviews" else "comments"
                         TextButton(onClick = { nav.reviews(id) }, contentPadding = PaddingValues(0.dp)) {
-                            Text(if (summary.comments > 0) "Read ${summary.comments.formatted()} reviews" else "Reviews")
+                            Text(if (summary.comments > 0) "Read ${summary.comments.formatted()} $noun" else noun.replaceFirstChar { it.uppercase() })
                         }
                     }
                 }
@@ -476,5 +486,8 @@ private fun TagGroup(label: String, tags: List<String>, warning: Boolean = false
     }
 }
 
-private fun siteUrl(id: Long): String =
-    if (WorkIds.site(id) == Site.FFN) FfnUrls.chapter(WorkIds.remote(id), 1) else Ao3Urls.work(id)
+private fun siteUrl(id: Long): String = when (WorkIds.site(id)) {
+    Site.FFN -> FfnUrls.chapter(WorkIds.remote(id), 1)
+    Site.WATTPAD -> WattpadUrls.storyPage(WorkIds.remote(id))
+    Site.AO3 -> Ao3Urls.work(id)
+}

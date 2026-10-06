@@ -210,7 +210,7 @@ fun WorkCard(
                 StatText("${work.words.formatted()} words")
                 StatText("Ch ${work.chaptersLabel}")
                 if (work.kudos > 0) StatText("♥ ${work.kudos.formatted()}")
-                if (work.site == Site.FFN && work.comments > 0) StatText("✎ ${work.comments.formatted()}")
+                if (work.site != Site.AO3 && work.comments > 0) StatText("✎ ${work.comments.formatted()}")
                 if (work.complete) StatText("✓ Complete")
                 Spacer(Modifier.weight(1f))
                 StatText(work.updated)

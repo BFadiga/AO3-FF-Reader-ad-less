@@ -34,6 +34,8 @@ import com.ao3reader.AppContainer
 import com.ao3reader.data.model.Review
 import com.ao3reader.data.model.WorkIds
 import com.ao3reader.data.remote.ffn.FfnUrls
+import com.ao3reader.data.remote.wattpad.WattpadUrls
+import com.ao3reader.data.model.Site
 import com.ao3reader.ui.Navigator
 import com.ao3reader.ui.components.ScreenScaffold
 import com.ao3reader.ui.components.appViewModel
@@ -55,7 +57,7 @@ class ReviewsViewModel(private val c: AppContainer, private val id: Long) : View
         error = null
         viewModelScope.launch {
             try {
-                val result = c.ffn.reviews(id, page + 1)
+                val result = if (WorkIds.site(id) == Site.WATTPAD) c.wattpad.comments(id, page + 1) else c.ffn.reviews(id, page + 1)
                 reviews = reviews + result.reviews
                 page = result.page
                 totalPages = result.totalPages
@@ -72,12 +74,15 @@ class ReviewsViewModel(private val c: AppContainer, private val id: Long) : View
 @Composable
 fun ReviewsScreen(id: Long, nav: Navigator) {
     val vm = appViewModel(key = "reviews-$id") { ReviewsViewModel(it, id) }
+    val wattpad = WorkIds.site(id) == Site.WATTPAD
     ScreenScaffold(
-        title = "Reviews",
+        title = if (wattpad) "Comments" else "Reviews",
         onBack = { nav.back() },
         actions = {
-            IconButton(onClick = { nav.web(FfnUrls.chapter(WorkIds.remote(id), 1) + "#review_name_value") }) {
-                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "Write a review")
+            IconButton(onClick = {
+                nav.web(if (wattpad) WattpadUrls.storyPage(WorkIds.remote(id)) else FfnUrls.chapter(WorkIds.remote(id), 1) + "#review_name_value")
+            }) {
+                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = if (wattpad) "Comment on Wattpad" else "Write a review")
             }
         },
     ) { padding ->
@@ -105,8 +110,9 @@ fun ReviewsScreen(id: Long, nav: Navigator) {
                             Text(vm.error!!, color = MaterialTheme.colorScheme.error)
                             Button(onClick = { vm.more() }) { Text("Retry") }
                         }
-                        vm.reviews.isEmpty() -> Text("No reviews yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        vm.page < vm.totalPages -> OutlinedButton(onClick = { vm.more() }) { Text("More reviews") }
+                        vm.reviews.isEmpty() && vm.page < vm.totalPages -> OutlinedButton(onClick = { vm.more() }) { Text("Next part") }
+                        vm.reviews.isEmpty() -> Text(if (wattpad) "No comments yet." else "No reviews yet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        vm.page < vm.totalPages -> OutlinedButton(onClick = { vm.more() }) { Text(if (wattpad) "Comments on the next part" else "More reviews") }
                     }
                 }
             }
