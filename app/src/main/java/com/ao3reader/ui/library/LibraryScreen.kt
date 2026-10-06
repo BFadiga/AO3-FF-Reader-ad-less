@@ -1,5 +1,7 @@
 package com.ao3reader.ui.library
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.offset
 import com.ao3reader.ui.components.agoLabel
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.filled.PushPin
@@ -297,7 +299,25 @@ private fun LibraryRow(work: LibraryWork, nav: Navigator, onLongPress: () -> Uni
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Cover(work.coverUrl, work.title, work.rating, Modifier.size(width = 42.dp, height = 58.dp))
+        Box {
+            Cover(work.coverUrl, work.title, work.rating, Modifier.size(width = 42.dp, height = 58.dp))
+            // New chapters: a badge on the cover's corner.
+            if (work.newChapters > 0) {
+                Text(
+                    "+${work.newChapters}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 6.dp, y = (-4).dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.primary)
+                        .border(1.5.dp, MaterialTheme.colorScheme.surface, RoundedCornerShape(50))
+                        .padding(horizontal = 5.dp, vertical = 0.dp),
+                )
+            }
+        }
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -340,19 +360,6 @@ private fun LibraryRow(work: LibraryWork, nav: Navigator, onLongPress: () -> Uni
                     drawStopIndicator = {},
                 )
             }
-        }
-        if (work.newChapters > 0) {
-            Spacer(Modifier.width(6.dp))
-            Text(
-                "+${work.newChapters}",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 7.dp, vertical = 1.dp),
-            )
         }
         IconButton(onClick = { nav.reader(work.id, work.lastReadChapter.coerceAtLeast(1)) }) {
             Icon(Icons.Default.PlayArrow, contentDescription = if (work.lastReadChapter == 0) "Start reading" else "Continue reading")
