@@ -7,7 +7,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 /** Prints which Wattpad listing addresses and sort/filter parameters exist. Skipped unless LIVE_WATTPAD=1. */
-class WattpadSortProbeTest {
+class WattpadSortLiveTest {
     private val http = OkHttpClient()
 
     @Test
