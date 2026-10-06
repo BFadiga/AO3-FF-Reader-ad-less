@@ -20,11 +20,9 @@ android {
     }
 
     signingConfigs {
-        // One shared key (kept out of git; CI writes it from a repository secret) so builds from
-        // GitHub and local builds update each other in place.
+        // One shared key, kept in the repo, so builds from GitHub and local builds update each other in place.
         getByName("debug") {
-            val shared = file("signing/debug.keystore")
-            if (shared.exists()) storeFile = shared
+            storeFile = file("signing/debug.keystore")
         }
     }
 
