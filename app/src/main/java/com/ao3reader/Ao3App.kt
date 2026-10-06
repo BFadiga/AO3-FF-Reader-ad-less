@@ -32,6 +32,10 @@ class Ao3App : Application(), ImageLoaderFactory {
                 runCatching { container.accounts.sync() }
             }
         }
+        // Offer a newer build of the app if GitHub has one.
+        scope.launch {
+            if (container.settings.settings.first().checkAppUpdates) container.appUpdater.check(quiet = true)
+        }
         // Reschedule the background check whenever its settings change.
         scope.launch {
             container.settings.settings

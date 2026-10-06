@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -17,6 +19,17 @@ jobs:
           java-version: 17
 
       - uses: gradle/actions/setup-gradle@v4
+
+      # Builds only install over each other when signed with the same key, stored as a secret.
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p app/signing
+            echo "$KEYSTORE_B64" | base64 -d > app/signing/debug.keystore
+            echo "HAS_SIGNING_KEY=true" >> "$GITHUB_ENV"
+          fi
 
       - name: Unit tests
         run: ./gradlew --no-daemon testDebugUnitTest
@@ -30,3 +43,16 @@ jobs:
           path: |
             app/build/outputs/apk/release/*.apk
             app/build/outputs/apk/debug/*.apk
+
+      # Each push to main becomes a release the app's "Check for updates" can install.
+      - name: Publish release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.HAS_SIGNING_KEY == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code=$((GITHUB_RUN_NUMBER + 100))
+          cp app/build/outputs/apk/debug/app-debug.apk ao3-reader.apk
+          gh release create "build-$code" ao3-reader.apk \
+            --title "Build $code" \
+            --notes "$(git log -1 --pretty=%B)" \
+            --target "$GITHUB_SHA"

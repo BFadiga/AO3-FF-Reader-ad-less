@@ -81,6 +81,8 @@ data class AppSettings(
     /** Push follows and likes made in the app to the site account too. */
     val syncToSites: Boolean = true,
     val lastSyncAt: Long = 0,
+    /** Look for a newer build of the app on GitHub when it opens. */
+    val checkAppUpdates: Boolean = true,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -117,6 +119,7 @@ class SettingsRepository(private val context: Context) {
         val ffnUser = stringPreferencesKey("ffn_user")
         val syncToSites = booleanPreferencesKey("sync_to_sites")
         val lastSync = longPreferencesKey("last_sync")
+        val appUpdates = booleanPreferencesKey("check_app_updates")
     }
 
     private inline fun <reified E : Enum<E>> Preferences.enumOf(key: Preferences.Key<String>, default: E): E =
@@ -169,6 +172,7 @@ class SettingsRepository(private val context: Context) {
             ffnUser = p[K.ffnUser],
             syncToSites = p[K.syncToSites] ?: d.syncToSites,
             lastSyncAt = p[K.lastSync] ?: d.lastSyncAt,
+            checkAppUpdates = p[K.appUpdates] ?: d.checkAppUpdates,
         )
     }
 
@@ -203,5 +207,6 @@ class SettingsRepository(private val context: Context) {
         if (s.ffnUser != null) p[K.ffnUser] = s.ffnUser else p.remove(K.ffnUser)
         p[K.syncToSites] = s.syncToSites
         p[K.lastSync] = s.lastSyncAt
+        p[K.appUpdates] = s.checkAppUpdates
     }
 }

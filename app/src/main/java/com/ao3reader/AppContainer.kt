@@ -15,6 +15,7 @@ import com.ao3reader.data.repo.FilterRepository
 import com.ao3reader.data.repo.LibraryRepository
 import com.ao3reader.data.repo.WorksRepository
 import com.ao3reader.work.UpdateChecker
+import com.ao3reader.update.AppUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,6 +37,7 @@ class AppContainer(context: Context) {
     val filters = FilterRepository(db)
     val accounts = AccountRepository(settings, works, library, cookies)
     val updateChecker = UpdateChecker(context, works, library, settings)
+    val appUpdater = AppUpdater(context.applicationContext)
 
     /** A FanFiction.net search another screen asked the Search tab to run (e.g. a fandom tapped in Categories). */
     val ffnSearchRequest = MutableStateFlow<FfnFilter?>(null)

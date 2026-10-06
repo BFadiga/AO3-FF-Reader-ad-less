@@ -1,5 +1,6 @@
 package com.ao3reader.ui
 
+import com.ao3reader.update.AppUpdatePrompt
 import android.net.Uri
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
@@ -147,6 +148,8 @@ fun AppNavigation(openWorkId: Long?, onOpenWorkHandled: () -> Unit) {
     val showBottomBar = route == null || topLevel.any { it.route == route }
     val library by container.library.observeLibrary().collectAsStateWithLifecycle(emptyList())
     val updates = library.count { it.newChapters > 0 }
+
+    AppUpdatePrompt()
 
     LaunchedEffect(openWorkId) {
         if (openWorkId != null) {

@@ -52,6 +52,7 @@ import com.ao3reader.data.prefs.AppSettings
 import com.ao3reader.data.prefs.ListDensity
 import com.ao3reader.data.prefs.ThemeMode
 import com.ao3reader.ui.Navigator
+import com.ao3reader.update.AppUpdateRow
 import com.ao3reader.ui.components.ScreenScaffold
 import com.ao3reader.ui.components.appContainer
 import kotlinx.coroutines.launch
@@ -193,6 +194,12 @@ fun SettingsScreen(nav: Navigator) {
 
             Section("Storage")
             NavRow("Delete all downloads", "Offline copies use ${formatBytes(downloadsBytes)}") { confirmClear = true }
+
+            Section("App updates")
+            AppUpdateRow()
+            SwitchRow("Check for updates when the app opens", settings.checkAppUpdates, "New builds come from the project's GitHub page") { v ->
+                update { it.copy(checkAppUpdates = v) }
+            }
 
             Section("About")
             Text(

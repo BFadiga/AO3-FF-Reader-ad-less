@@ -13,8 +13,19 @@ android {
         applicationId = "com.ao3reader"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        // GitHub builds number themselves from the workflow run, so each one installs over the last.
+        val run = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        versionCode = run?.plus(100) ?: 2
+        versionName = if (run != null) "0.2.${run + 100}" else "0.2.0-local"
+    }
+
+    signingConfigs {
+        // One shared key (kept out of git; CI writes it from a repository secret) so builds from
+        // GitHub and local builds update each other in place.
+        getByName("debug") {
+            val shared = file("signing/debug.keystore")
+            if (shared.exists()) storeFile = shared
+        }
     }
 
     buildTypes {
@@ -65,4 +76,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    // Android's org.json is only a stub in local unit tests.
+    testImplementation("org.json:json:20240303")
 }
