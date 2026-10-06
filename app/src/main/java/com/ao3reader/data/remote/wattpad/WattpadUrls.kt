@@ -27,7 +27,7 @@ object WattpadUrls {
     fun comments(partId: Long): String = "$BASE/v5/comments/namespaces/parts/resources/$partId/comments?limit=50"
 
     fun authorStories(username: String, offset: Int): String =
-        "$BASE/api/v3/users/${enc(username)}/stories/published?limit=50&offset=$offset" +
+        "$BASE/api/v3/users/${enc(username)}/stories?limit=50&offset=$offset" +
             "&fields=${enc("stories($STORY_FIELDS),total")}"
 
     fun library(username: String, offset: Int): String =

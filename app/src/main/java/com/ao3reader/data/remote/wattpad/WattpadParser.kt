@@ -80,7 +80,7 @@ object WattpadParser {
             Review(
                 author = c.optJSONObject("user")?.optString("name").orEmpty(),
                 meta = c.optString("created").take(10),
-                text = c.optString("body"),
+                text = c.optString("text").ifBlank { c.optString("body") },
             )
         }
     }
@@ -88,9 +88,12 @@ object WattpadParser {
     fun parseUsername(json: String): String? = runCatching { JSONObject(json).optString("username").ifBlank { null } }.getOrNull()
 
     /** The signed-in username embedded in a Wattpad web page, if any. */
-    fun usernameFromPage(html: String): String? =
-        Regex(""""currentUser"\s*:\s*\{[^{}]*?"username"\s*:\s*"([^"]+)"""").find(html)?.groupValues?.get(1)
-            ?: Regex("""wattpad\.currentUser\s*=\s*\{[^{}]*?"username"\s*:\s*"([^"]+)"""").find(html)?.groupValues?.get(1)
+    fun usernameFromPage(html: String): String? = listOf(
+        """"currentUser"\s*:\s*\{[^{}]*?"username"\s*:\s*"([^"]+)"""",
+        """currentUser\s*=\s*\{[^{}]*?"username"\s*:\s*"([^"]+)"""",
+        """"currentUser"\s*:\s*\{[^{}]*?"name"\s*:\s*"([^"]+)"""",
+        """data-username="([^"]+)"""",
+    ).firstNotNullOfOrNull { Regex(it).find(html)?.groupValues?.get(1) }
 
     private fun strings(a: JSONArray?): List<String> =
         if (a == null) emptyList() else (0 until a.length()).map { a.getString(it) }.filter { it.isNotBlank() }
