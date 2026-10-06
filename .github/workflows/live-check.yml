@@ -1,0 +1,26 @@
+name: Live site check
+
+# Runs the tests that talk to the real sites. Start it by hand from the Actions tab.
+on:
+  workflow_dispatch:
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Live tests
+        env:
+          LIVE_WATTPAD: "1"
+          LIVE_AO3: "1"
+        run: ./gradlew --no-daemon testDebugUnitTest --tests '*LiveTest*' -i | grep -E "GET |search:|story:|part 1|comments on|author |library|current user|PASSED|FAILED|SKIPPED|AssertionError|Exception" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-test-report
+          path: app/build/reports/tests/
