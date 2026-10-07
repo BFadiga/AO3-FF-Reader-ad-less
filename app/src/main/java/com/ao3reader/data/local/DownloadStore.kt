@@ -55,6 +55,39 @@ class DownloadStore(context: Context) {
         }
     }
 
+    private val metaRoot = File(context.filesDir, "work-details")
+
+    /** A library work's details page (notes, chapter list) so it opens instantly next time. */
+    suspend fun saveDetails(workId: Long, published: String?, notesHtml: String?, chapters: List<Chapter>) = withContext(Dispatchers.IO) {
+        metaRoot.mkdirs()
+        val arr = JSONArray()
+        chapters.forEach { c -> arr.put(JSONObject().put("index", c.index).put("id", c.id ?: JSONObject.NULL).put("title", c.title)) }
+        val o = JSONObject()
+            .put("published", published ?: JSONObject.NULL)
+            .put("notes", notesHtml ?: JSONObject.NULL)
+            .put("chapters", arr)
+        File(metaRoot, "$workId.json").writeText(o.toString())
+    }
+
+    suspend fun loadDetails(workId: Long): SavedDetails? = withContext(Dispatchers.IO) {
+        val f = File(metaRoot, "$workId.json")
+        if (!f.exists()) return@withContext null
+        runCatching {
+            val o = JSONObject(f.readText())
+            val arr = o.getJSONArray("chapters")
+            SavedDetails(
+                published = o.optStringOrNull("published"),
+                notesHtml = o.optStringOrNull("notes"),
+                chapters = (0 until arr.length()).map { i ->
+                    val c = arr.getJSONObject(i)
+                    Chapter(c.getInt("index"), if (c.isNull("id")) null else c.getLong("id"), c.getString("title"), "")
+                },
+            )
+        }.getOrNull()
+    }
+
+    suspend fun deleteDetails(workId: Long) = withContext(Dispatchers.IO) { File(metaRoot, "$workId.json").delete() }
+
     suspend fun delete(workId: Long) = withContext(Dispatchers.IO) { dir(workId).deleteRecursively() }
 
     suspend fun deleteAll() = withContext(Dispatchers.IO) { root.deleteRecursively() }
@@ -65,3 +98,5 @@ class DownloadStore(context: Context) {
 
     private fun JSONObject.optStringOrNull(key: String): String? = if (isNull(key)) null else optString(key)
 }
+
+data class SavedDetails(val published: String?, val notesHtml: String?, val chapters: List<Chapter>)

@@ -111,6 +111,17 @@ class WorkViewModel(private val c: AppContainer, val id: Long) : ViewModel() {
         error = null
         verifyUrl = null
         viewModelScope.launch {
+            // Library works show their saved details at once; the site is asked for fresh ones meanwhile.
+            if (summary == null) {
+                c.library.savedDetails(id)?.let { (s, details) ->
+                    summary = s
+                    details?.let {
+                        chapters = it.chapters
+                        notesHtml = it.notesHtml
+                        published = it.published
+                    }
+                }
+            }
             try {
                 val work = c.works.fullWork(id, forceRefresh = force)
                 summary = work.summary
@@ -121,6 +132,7 @@ class WorkViewModel(private val c: AppContainer, val id: Long) : ViewModel() {
                 kudosGiven = work.actions.kudosGiven
                 // Keep library metadata fresh whenever the work is opened.
                 c.library.get(id)?.let { c.library.upsert(it.withMetadata(work.summary)) }
+                c.library.saveDetails(work)
                 // Subscribed on AO3 but not followed here yet: follow it, so the two stay in step.
                 if (work.actions.subscribed && entry.value?.followed != true) c.library.follow(work.summary)
             } catch (e: Exception) {
@@ -129,6 +141,8 @@ class WorkViewModel(private val c: AppContainer, val id: Long) : ViewModel() {
                 if (s != null && offline.isNotEmpty()) {
                     summary = s
                     chapters = offline
+                    offlineCopy = true
+                } else if (summary != null) {
                     offlineCopy = true
                 } else {
                     error = e.userMessage()
@@ -316,8 +330,14 @@ fun WorkScreen(id: Long, nav: Navigator) {
                     }
                     if (vm.offlineCopy) {
                         Text(
-                            "Showing your offline copy (${site.shortLabel} couldn't be reached).",
+                            "Showing your saved copy (${site.shortLabel} couldn't be reached).",
                             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.tertiary,
+                        )
+                        vm.verifyUrl?.let { url -> TextButton(onClick = { nav.web(url) }) { Text("Verify") } }
+                    } else if (vm.loading) {
+                        Text(
+                            "Checking ${site.shortLabel} for changes…",
+                            style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }

@@ -5,6 +5,7 @@ import com.ao3reader.data.local.DownloadStore
 import com.ao3reader.data.local.LibraryWork
 import com.ao3reader.data.local.UpdateEvent
 import com.ao3reader.data.model.Chapter
+import com.ao3reader.data.model.WorkDetail
 import com.ao3reader.data.model.WorkSummary
 import kotlinx.coroutines.flow.Flow
 
@@ -46,7 +47,7 @@ class LibraryRepository(
 
     suspend fun unfollow(id: Long) {
         val existing = dao.get(id) ?: return
-        if (existing.isDownloaded || existing.liked) dao.upsert(existing.copy(followed = false, newChapters = 0, pinned = false)) else dao.delete(id)
+        if (existing.isDownloaded || existing.liked) dao.upsert(existing.copy(followed = false, newChapters = 0, pinned = false)) else { dao.delete(id); downloads.deleteDetails(id) }
     }
 
     /** Kudos left / favorited. Liked works show under the library's "Liked" filter. */
@@ -96,7 +97,7 @@ class LibraryRepository(
     suspend fun deleteDownload(id: Long) {
         downloads.delete(id)
         val existing = dao.get(id) ?: return
-        if (existing.followed || existing.liked) dao.upsert(existing.copy(downloadedChapters = 0, downloadedAt = null)) else dao.delete(id)
+        if (existing.followed || existing.liked) dao.upsert(existing.copy(downloadedChapters = 0, downloadedAt = null)) else { dao.delete(id); downloads.deleteDetails(id) }
     }
 
     suspend fun deleteAllDownloads() {
@@ -141,6 +142,20 @@ class LibraryRepository(
         works.chapterText(id, index).ifBlank { throw IllegalStateException("That chapter is empty.") }
 
     suspend fun get(id: Long) = dao.get(id)
+
+    /** Saved details page of a library work, shown while the site is asked for fresh ones. */
+    suspend fun savedDetails(id: Long): Pair<WorkSummary, com.ao3reader.data.local.SavedDetails?>? {
+        val entry = dao.get(id) ?: return null
+        val details = downloads.loadDetails(id)
+            ?: downloads.load(id)?.let { com.ao3reader.data.local.SavedDetails(null, null, it.map { c -> c.copy(contentHtml = "") }) }
+        return entry.toSummary() to details
+    }
+
+    /** Remembers a library work's details page; skipped for works not in the library. */
+    suspend fun saveDetails(work: WorkDetail) {
+        if (dao.get(work.summary.id) == null) return
+        downloads.saveDetails(work.summary.id, work.published, work.notesHtml, work.chapters)
+    }
     suspend fun upsert(work: LibraryWork) = dao.upsert(work)
     suspend fun followed() = dao.followed()
 }
