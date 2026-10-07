@@ -85,7 +85,11 @@ class Ao3Client(
 
     private val noRedirects by lazy { http.newBuilder().followRedirects(false).build() }
 
+    /** After AO3 turns the plain client away, go straight to the browser for a while instead of asking again. */
+    @Volatile private var browserUntil = 0L
+
     private suspend fun fetch(url: String): String = withContext(Dispatchers.IO) {
+        browserFallback?.let { if (System.currentTimeMillis() < browserUntil) return@withContext it(url) }
         var attempt = 0
         while (true) {
             val response = gate.withLock {
@@ -131,6 +135,7 @@ class Ao3Client(
             if (blocked) {
                 val fallback = browserFallback
                     ?: throw Ao3Exception("AO3 turned the app away (its bot check). Try again in a little while.")
+                browserUntil = System.currentTimeMillis() + 30 * 60_000L
                 return@withContext fallback(url)
             }
         }
