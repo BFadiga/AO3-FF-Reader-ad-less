@@ -51,6 +51,15 @@ class HiddenBrowser(private val context: Context) {
      */
     val userAgent: String by lazy { desktopUserAgent(WebSettings.getDefaultUserAgent(context)) }
 
+    /** The phone's own, unchanged browser identity. */
+    val phoneUserAgent: String by lazy { WebSettings.getDefaultUserAgent(context) }
+
+    /**
+     * AO3 gets the phone's real identity: Cloudflare's check there compares the user agent with what
+     * the browser engine reports about itself, and a desktop identity on a phone never passes.
+     */
+    fun userAgentFor(url: String): String = if (url.contains("archiveofourown.org")) phoneUserAgent else userAgent
+
     /** Returns the page's HTML once any Cloudflare check has cleared. */
     suspend fun load(url: String, timeoutMs: Long = 35_000): String = run(url, null, timeoutMs)
 
@@ -77,7 +86,7 @@ class HiddenBrowser(private val context: Context) {
                     javaScriptEnabled = true
                     domStorageEnabled = true
                     blockNetworkImage = true
-                    userAgentString = userAgent
+                    userAgentString = userAgentFor(url)
                 }
                 web.addJavascriptInterface(object {
                     @JavascriptInterface
@@ -87,6 +96,7 @@ class HiddenBrowser(private val context: Context) {
                 }, "Bridge")
 
                 var scriptStarted = false
+                var sawChallenge = false
                 // Poll the page: Cloudflare's check page reloads itself into the real page once passed.
                 val poll = object : Runnable {
                     override fun run() {
@@ -94,7 +104,11 @@ class HiddenBrowser(private val context: Context) {
                         web.evaluateJavascript("document.documentElement.outerHTML") { raw ->
                             val html = decodeJsString(raw)
                             when {
-                                html.isBlank() || isChallenge(html) -> main.postDelayed(this, 700)
+                                html.isBlank() -> main.postDelayed(this, 700)
+                                isChallenge(html) -> {
+                                    sawChallenge = true
+                                    main.postDelayed(this, 700)
+                                }
                                 script == null -> finish { it.resume(html) }
                                 !scriptStarted -> {
                                     scriptStarted = true
@@ -112,7 +126,15 @@ class HiddenBrowser(private val context: Context) {
                         }
                     }
                 }
-                main.postDelayed({ finish { it.resumeWithException(VerificationNeededException(url)) } }, timeoutMs)
+                // Only a check that never cleared needs the person; a page that is just slow is a plain failure.
+                main.postDelayed({
+                    finish {
+                        it.resumeWithException(
+                            if (sawChallenge) VerificationNeededException(url)
+                            else java.io.IOException("${siteOf(url)} took too long to answer. Try again."),
+                        )
+                    }
+                }, timeoutMs)
                 cont.invokeOnCancellation { main.post { finish { } } }
                 web.loadUrl(url)
             }
@@ -130,7 +152,7 @@ class HiddenBrowser(private val context: Context) {
      * which carries the browser's identity and Cloudflare clearance without rendering anything.
      * Only when that is turned away is the page opened for real, which clears Cloudflare's check.
      */
-    suspend fun fetch(url: String, timeoutMs: Long = 60_000): String = fetchLock.withLock {
+    suspend fun fetch(url: String, timeoutMs: Long = 90_000): String = fetchLock.withLock {
         val origin = Regex("^https?://[^/]+").find(url)?.value ?: return@withLock load(url, timeoutMs)
         val ready = withContext(Dispatchers.Main) { fetchers[origin] }
         if (ready != null) {
@@ -152,7 +174,7 @@ class HiddenBrowser(private val context: Context) {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.blockNetworkImage = true
-        settings.userAgentString = userAgent
+        settings.userAgentString = userAgentFor(origin)
         addJavascriptInterface(object {
             @JavascriptInterface
             fun result(call: Int, status: Int, body: String?) {

@@ -54,7 +54,7 @@ fun WebScreen(url: String, nav: Navigator) {
                     WebView(ctx).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
-                        settings.userAgentString = container.browser.userAgent
+                        settings.userAgentString = container.browser.userAgentFor(url)
                         settings.useWideViewPort = true
                         settings.loadWithOverviewMode = true
                         settings.builtInZoomControls = true

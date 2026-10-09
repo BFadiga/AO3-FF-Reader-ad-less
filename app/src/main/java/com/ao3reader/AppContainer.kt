@@ -33,7 +33,7 @@ class AppContainer(context: Context) {
     val browser = HiddenBrowser(context.applicationContext)
     val settings = SettingsRepository(context)
     val ao3 = Ao3Repository(
-        Ao3Client(cookies = cookies, userAgent = { browser.userAgent }, browserFallback = { url -> browser.fetch(url) }),
+        Ao3Client(cookies = cookies, userAgent = { browser.phoneUserAgent }, browserFallback = { url -> browser.fetch(url) }),
     )
     val ffn = FfnRepository(FfnClient(browser, cookies))
     val wattpad = WattpadRepository(WattpadClient(browser, cookies))

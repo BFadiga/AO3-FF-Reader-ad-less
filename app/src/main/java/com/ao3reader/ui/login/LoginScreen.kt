@@ -90,7 +90,7 @@ fun LoginScreen(site: Site, nav: Navigator) {
                         WebView(ctx).apply {
                             settings.javaScriptEnabled = true
                             settings.domStorageEnabled = true
-                            settings.userAgentString = container.browser.userAgent
+                            settings.userAgentString = container.browser.userAgentFor(loginUrl)
                             // Desktop pages: start zoomed out to fit, pinch to zoom.
                             settings.useWideViewPort = true
                             settings.loadWithOverviewMode = true
